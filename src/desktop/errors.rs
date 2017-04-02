@@ -8,6 +8,7 @@ error_chain! {
         InvalidLocale
         UnknownEntryKey
         MissingRequiredEntryKey
+        TypeNotApplication
     }
     foreign_links {
         InvalidValueFormat(ParseBoolError);

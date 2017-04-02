@@ -6,9 +6,8 @@ extern crate env_logger;
 extern crate walkdir;
 extern crate clap;
 extern crate xdg;
-
-use std::process::{Command, exit};
-use std::os::unix::process::CommandExt;
+#[macro_use]
+extern crate derive_builder;
 
 use clap::*;
 use error_chain::*;
@@ -30,7 +29,6 @@ fn main() {
         .author(AUTHORS)
         .get_matches();
 
-    let desktop_files = find_all_desktop_files().unwrap();
-    let apps = Applications::new(desktop_files);
+    let apps = find_all_desktop_files().unwrap();
     apps.find_exact_match("", None);
 }

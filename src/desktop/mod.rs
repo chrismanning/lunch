@@ -4,7 +4,9 @@ use std::ffi::OsStr;
 use std::str::FromStr;
 use std::result::Result as StdResult;
 use std::borrow::Borrow;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::{Command, exit};
+use std::os::unix::process::CommandExt;
 
 use walkdir::{DirEntry, WalkDir, WalkDirIterator};
 use xdg::BaseDirectories as XdgDirs;
@@ -20,7 +22,7 @@ pub struct Applications {
 }
 
 impl Applications {
-    pub fn new(desktop_files: Vec<PathBuf>) -> Self {
+    fn new(desktop_files: Vec<PathBuf>) -> Self {
         Applications {
             desktop_files: desktop_files
         }
@@ -64,9 +66,25 @@ pub struct DesktopEntry {
     pub exec: Option<String>,
     pub path: Option<PathBuf>,
     pub terminal: bool,
+    pub keywords: Vec<String>,
+    pub categories: Vec<String>,
 }
 
-pub fn find_all_desktop_files() -> Result<Vec<PathBuf>> {
+impl DesktopEntry {
+    pub fn launch(&self) -> Result<()> {
+        let installed = match self.try_exec {
+            Some(ref path) => {
+                let path = Path::new(path);
+                path.exists()
+            },
+            None => false
+        };
+        // TODO launch()
+        Ok(())
+    }
+}
+
+pub fn find_all_desktop_files() -> Result<Applications> {
     let xdg = XdgDirs::new()?;
     let data_files = xdg.list_data_files_once("applications");
     let desktop_files = data_files.into_iter()
@@ -79,7 +97,7 @@ pub fn find_all_desktop_files() -> Result<Vec<PathBuf>> {
             path
         })
         .collect();
-    Ok(desktop_files)
+    Ok(Applications::new(desktop_files))
 }
 
 struct LocaleString {
@@ -96,36 +114,6 @@ impl LocaleString {
         LocaleString {
             value: value.to_string(),
             locale: name.and_then(|s| s.parse::<Locale>().ok()),
-        }
-    }
-}
-
-enum EntryKey {
-    Type(String),
-    Version(String),
-    Name(LocaleString),
-    GenericName(LocaleString),
-    NoDisplay(bool),
-    Comment(LocaleString),
-    Hidden(bool),
-    OnlyShowIn(Vec<String>),
-    NotShowIn(Vec<String>),
-    TryExec(String),
-    Exec(String),
-    Path(String),
-    Terminal(bool),
-    Categories(Vec<String>),
-    Keywords(Vec<String>),
-}
-
-impl FromStr for EntryKey {
-    type Err = Error;
-
-    fn from_str(s: &str) -> StdResult<Self, Self::Err> {
-        // TODO parse all types
-        if let Some((name, value)) = Self::parse_entry(s.trim()) {
-        } else {
-            Err(ErrorKind::UnknownEntryKey.into())
         }
     }
 }
@@ -149,7 +137,7 @@ fn read_desktop_entry<R: BufRead>(input: R) -> Result<DesktopEntry> {
     let mut typ = None;
     let mut name = None;
     for line in lines {
-        split_entry(line)
+        split_entry(&line)
             .map(|(key, value)| {
                 let i = key.find("[").unwrap_or_else(|| key.len());
                 match key[0..i].trim().as_ref() {
@@ -157,24 +145,18 @@ fn read_desktop_entry<R: BufRead>(input: R) -> Result<DesktopEntry> {
                     "Name" => name = Some(LocaleString::new(key, value)),
                     //                "GenericName" => Ok(EntryKey::GenericName(LocaleString::new(name, value))),
                     //                "NoDisplay" => Ok(EntryKey::NoDisplay(value.parse::<bool>()?)),
-                    _ => Err(ErrorKind::UnknownEntryKey.into())
+                    _ => {}// Err(ErrorKind::UnknownEntryKey.into())
                 }
-            })
+            });
+        ()
     }
-    for entry in entries.iter() {
-        match entry {
-            &EntryKey::Name(ref local_name) => {
-                name = Some(local_name.value[..].to_string());
-                ()
-            }
-            _ => {
-                ()
-            }
-        }
+
+    if typ.as_ref().map(|s| s.as_str()) != Some("Application") {
+        return Err(ErrorKind::TypeNotApplication.into());
     }
-    //    desktop_entry
-    //    desktop_entry.name
-    Ok(DesktopEntry {
-        name: name.ok_or(ErrorKind::MissingRequiredEntryKey)?
-    })
+
+//    Ok(DesktopEntry {
+//        name: name.ok_or(ErrorKind::MissingRequiredEntryKey)?,
+//    })
+    Err(ErrorKind::NoMatchFound.into())
 }
