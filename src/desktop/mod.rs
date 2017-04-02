@@ -55,18 +55,27 @@ impl Applications {
 pub struct DesktopEntry {
     pub application: String,
     pub name: String,
+    #[builder(default="None")]
     pub generic_name: Option<String>,
+    #[builder(default="false")]
     pub no_display: bool,
     pub comment: String,
-    pub icon: PathBuf,
+    #[builder(default="None")]
+    pub icon: Option<PathBuf>,
+    #[builder(default="false")]
     pub hidden: bool,
-    pub only_show_in: Option<Vec<String>>,
-    pub not_show_in: Option<Vec<String>>,
+    #[builder(default="vec![]")]
+    pub only_show_in: Vec<String>,
+    #[builder(default="vec![]")]
+    pub not_show_in: Vec<String>,
+    #[builder(default="None")]
     pub try_exec: Option<String>,
-    pub exec: Option<String>,
+    pub exec: String,
+    #[builder(default="None")]
     pub path: Option<PathBuf>,
-    pub terminal: bool,
+    #[builder(default="vec![]")]
     pub keywords: Vec<String>,
+    #[builder(default="vec![]")]
     pub categories: Vec<String>,
 }
 
@@ -158,5 +167,6 @@ fn read_desktop_entry<R: BufRead>(input: R) -> Result<DesktopEntry> {
 //    Ok(DesktopEntry {
 //        name: name.ok_or(ErrorKind::MissingRequiredEntryKey)?,
 //    })
-    Err(ErrorKind::NoMatchFound.into())
+    DesktopEntryBuilder::default().build()
+        .map_err(|s| ErrorKind::MissingRequiredEntryKey.into())
 }
