@@ -1,11 +1,13 @@
 [package]
+authors = ["Chris Manning <cmanning999@gmail.com>"]
 name = "lunch"
 version = "0.1.0"
-authors = ["Chris Manning <cmanning999@gmail.com>"]
 
 [dependencies]
 clap = "2.20.5"
-log = "0.3.7"
-walkdir = "1.0.7"
+derive_builder = "0.3.0"
 env_logger = "0.4.2"
 error-chain = "0.10.0"
+log = "0.3.7"
+walkdir = "1.0.7"
+xdg = "2.1.0"
