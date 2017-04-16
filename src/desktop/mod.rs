@@ -17,13 +17,13 @@ pub mod locale;
 use locale::{Locale, MatchLevel};
 use errors::*;
 
-pub struct Applications {
+pub struct DesktopFiles {
     desktop_files: Vec<PathBuf>,
 }
 
-impl Applications {
+impl DesktopFiles {
     fn new(desktop_files: Vec<PathBuf>) -> Self {
-        Applications {
+        DesktopFiles {
             desktop_files: desktop_files
         }
     }
@@ -31,8 +31,8 @@ impl Applications {
     pub fn find_exact_match(&self, name: &str, locale: Option<Locale>) -> Result<DesktopEntry> {
         self.desktop_files.iter()
             .map(|buf| File::open(buf.as_path()))
-            .filter_map(|entry| {
-                match entry {
+            .filter_map(|file| {
+                match file {
                     Ok(e) => {
                         debug!("Opened file {:?}", e);
                         Some(e)
@@ -44,23 +44,38 @@ impl Applications {
                 }
             })
             .map(|file| read_desktop_entry(BufReader::new(file)))
+            .filter_map(|entry| {
+                match entry {
+                    Ok(e) => {
+                        debug!("Found desktop entry file {:?}", e);
+                        Some(e)
+                    }
+                    Err(err) => {
+                        warn!("Error reading desktop file: {}", err);
+                        None
+                    }
+                }
+            })
+            .filter(|entry| entry.entry_type == "Application")
+            .filter(|entry| !entry.no_display)
             // TODO don't just open the first
             .next().ok_or(ErrorKind::NoMatchFound.into())
-            .and_then(|x| x)
-
     }
 }
 
 #[derive(Debug, Default, Builder)]
 pub struct DesktopEntry {
-    pub application: String,
+    #[builder(setter(into))]
+    pub entry_type: String,
+    #[builder(setter(into))]
     pub name: String,
-    #[builder(default="None")]
+    #[builder(setter(into), default="None")]
     pub generic_name: Option<String>,
     #[builder(default="false")]
     pub no_display: bool,
-    pub comment: String,
-    #[builder(default="None")]
+    #[builder(setter(into), default="None")]
+    pub comment: Option<String>,
+    #[builder(setter(into), default="None")]
     pub icon: Option<PathBuf>,
     #[builder(default="false")]
     pub hidden: bool,
@@ -68,10 +83,11 @@ pub struct DesktopEntry {
     pub only_show_in: Vec<String>,
     #[builder(default="vec![]")]
     pub not_show_in: Vec<String>,
-    #[builder(default="None")]
+    #[builder(setter(into), default="None")]
     pub try_exec: Option<String>,
-    pub exec: String,
-    #[builder(default="None")]
+    #[builder(setter(into), default="None")]
+    pub exec: Option<String>,
+    #[builder(setter(into), default="None")]
     pub path: Option<PathBuf>,
     #[builder(default="vec![]")]
     pub keywords: Vec<String>,
@@ -93,7 +109,7 @@ impl DesktopEntry {
     }
 }
 
-pub fn find_all_desktop_files() -> Result<Applications> {
+pub fn find_all_desktop_files() -> Result<DesktopFiles> {
     let xdg = XdgDirs::new()?;
     let data_files = xdg.list_data_files_once("applications");
     let desktop_files = data_files.into_iter()
@@ -106,7 +122,7 @@ pub fn find_all_desktop_files() -> Result<Applications> {
             path
         })
         .collect();
-    Ok(Applications::new(desktop_files))
+    Ok(DesktopFiles::new(desktop_files))
 }
 
 struct LocaleString {
@@ -136,37 +152,32 @@ fn split_entry(entry: &str) -> Option<(&str, &str)> {
 fn read_desktop_entry<R: BufRead>(input: R) -> Result<DesktopEntry> {
     let lines = input.lines()
         .filter_map(|line| line.ok())
-        .filter(|line| line.trim().is_empty() || line.trim().starts_with("#"))
-        .skip_while(|line| !line.trim().starts_with("[Desktop Entry]"))
+        .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("#"))
+        .skip_while(|line| !line.trim().starts_with(r"[Desktop Entry]"))
         .skip(1)
-        .take_while(|line| !line.trim().starts_with("["));
+        .take_while(|line| !line.trim().starts_with("["))
+    ;
     // TODO make Vec<(Locale, DesktopEntry)>, get current locale, return closest match
 
-    // TODO parse directly into Option bindings like below
-    let mut typ = None;
-    let mut name = None;
+    let mut builder = DesktopEntryBuilder::default();
     for line in lines {
-        split_entry(&line)
-            .map(|(key, value)| {
+        match split_entry(&line) {
+            Some((key, value)) => {
                 let i = key.find("[").unwrap_or_else(|| key.len());
                 match key[0..i].trim().as_ref() {
-                    "Type" => typ = Some(value.to_string()),
-                    "Name" => name = Some(LocaleString::new(key, value)),
-                    //                "GenericName" => Ok(EntryKey::GenericName(LocaleString::new(name, value))),
-                    //                "NoDisplay" => Ok(EntryKey::NoDisplay(value.parse::<bool>()?)),
-                    _ => {}// Err(ErrorKind::UnknownEntryKey.into())
-                }
-            });
-        ()
+                    "Type" => builder.entry_type(value),
+                    "Name" => builder.name(value),
+                    "GenericName" => builder.generic_name(value.to_string()),
+                    "NoDisplay" => builder.no_display(value.parse()?),
+                    "Comment" => builder.comment(value.to_string()),
+                    _ => &builder
+                };
+                ()
+            },
+            None => ()
+        }
     }
 
-    if typ.as_ref().map(|s| s.as_str()) != Some("Application") {
-        return Err(ErrorKind::TypeNotApplication.into());
-    }
-
-//    Ok(DesktopEntry {
-//        name: name.ok_or(ErrorKind::MissingRequiredEntryKey)?,
-//    })
-    DesktopEntryBuilder::default().build()
-        .map_err(|s| ErrorKind::MissingRequiredEntryKey.into())
+    builder.build()
+        .map_err(|s| s.into())
 }
