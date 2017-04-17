@@ -34,7 +34,8 @@ fn main() {
     match apps.find_exact_match(term, None) {
         Ok(entry) => {
             debug!("Found match: {:?}", entry);
-            entry.launch().unwrap()
+            let err = entry.launch();
+            error!("Error launching entry named '{}': {}", entry.name, err);
         },
         Err(err) => {
             error!("Error finding match for '{}': {}", term, err);

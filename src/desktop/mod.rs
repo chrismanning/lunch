@@ -102,17 +102,34 @@ pub struct DesktopEntry {
 }
 
 impl DesktopEntry {
-    pub fn launch(&self) -> Result<()> {
+    pub fn launch(&self) -> Error {
         info!("Launching '{}'", self.name);
-        let installed = match self.try_exec {
-            Some(ref path) => {
-                let path = Path::new(path);
-                path.exists()
-            },
-            None => false
+        if let Some(ref path) = self.try_exec {
+            let path = Path::new(path);
+            if!(path.exists()) {
+                return ErrorKind::ApplicationNotFound.into()
+            }
+        }
+        let mut cmd = if let Some(ref exec) = self.exec {
+            Command::new(exec)
+        } else {
+            return ErrorKind::MissingRequiredEntryKey.into()
         };
-        // TODO launch()
-        Ok(())
+        // TODO launch() args
+
+        if let Some(ref path) = self.path {
+            cmd.current_dir(path);
+        }
+        use std::io::Error;
+        use std::io::ErrorKind::NotFound;
+        match cmd.exec().kind() {
+            NotFound => {
+                ErrorKind::ApplicationNotFound.into()
+            },
+            _ => {
+                ErrorKind::UnknownError.into()
+            }
+        }
     }
 }
 

@@ -9,6 +9,8 @@ error_chain! {
         UnknownEntryKey
         MissingRequiredEntryKey
         TypeNotApplication
+        ApplicationNotFound
+        UnknownError
     }
     foreign_links {
         InvalidValueFormat(ParseBoolError);
