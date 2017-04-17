@@ -29,6 +29,15 @@ impl DesktopFiles {
     }
 
     pub fn find_exact_match(&self, name: &str, locale: Option<Locale>) -> Result<DesktopEntry> {
+        self.parse_files().into_iter()
+            .filter(|entry| entry.entry_type == "Application")
+            .filter(|entry| !entry.no_display)
+            .skip_while(|entry| entry.name != name)
+            .filter(|entry| !entry.hidden)
+            .next().ok_or(ErrorKind::NoMatchFound.into())
+    }
+
+    pub fn parse_files(&self) -> Vec<DesktopEntry> {
         self.desktop_files.iter()
             .map(|buf| File::open(buf.as_path()))
             .filter_map(|file| {
@@ -56,10 +65,7 @@ impl DesktopFiles {
                     }
                 }
             })
-            .filter(|entry| entry.entry_type == "Application")
-            .filter(|entry| !entry.no_display)
-            // TODO don't just open the first
-            .next().ok_or(ErrorKind::NoMatchFound.into())
+            .collect()
     }
 }
 
@@ -97,6 +103,7 @@ pub struct DesktopEntry {
 
 impl DesktopEntry {
     pub fn launch(&self) -> Result<()> {
+        info!("Launching '{}'", self.name);
         let installed = match self.try_exec {
             Some(ref path) => {
                 let path = Path::new(path);

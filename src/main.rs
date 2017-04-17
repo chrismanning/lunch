@@ -29,6 +29,15 @@ fn main() {
         .author(AUTHORS)
         .get_matches();
 
+    let term = "";
     let apps = find_all_desktop_files().unwrap();
-    apps.find_exact_match("", None);
+    match apps.find_exact_match(term, None) {
+        Ok(entry) => {
+            debug!("Found match: {:?}", entry);
+            entry.launch().unwrap()
+        },
+        Err(err) => {
+            error!("Error finding match for '{}': {}", term, err);
+        }
+    }
 }
