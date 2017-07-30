@@ -1,3 +1,5 @@
+#![feature(conservative_impl_trait)]
+
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
@@ -23,11 +25,12 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
     env_logger::init().unwrap();
-    let matches = App::new(APP_NAME)
+    let arg_matches = App::new(APP_NAME)
         .version(VERSION)
         .about(DESCRIPTION)
         .author(AUTHORS)
         .get_matches();
+//    arg_matches.
 
     let term = "";
     let apps = find_all_desktop_files().unwrap();

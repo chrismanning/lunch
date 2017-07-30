@@ -1,6 +1,8 @@
 use std::str::FromStr;
-use desktop::*;
+use desktop::StdResult;
+use desktop::errors::{Error, ErrorKind};
 
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct Locale {
     lang: String,
     country: Option<String>,
@@ -28,7 +30,7 @@ impl FromStr for Locale {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone, Copy)]
 pub enum MatchLevel {
     None,
     Lang,
@@ -38,10 +40,14 @@ pub enum MatchLevel {
 }
 
 impl Locale {
-    pub fn compare(&self, b: &Self) -> MatchLevel {
+    pub fn match_level(&self, b: &Self) -> MatchLevel {
         use self::MatchLevel::*;
         if self.lang == b.lang && self.country.is_some() && self.country == b.country &&
-            self.modifier.is_some() && self.modifier == b.modifier { LangCountryModifier } else if self.lang == b.lang && self.country == b.country { LangCountry } else if self.modifier.is_some() && self.modifier == b.modifier { Modifier } else if self.lang == b.lang { Lang } else { None }
+            self.modifier.is_some() && self.modifier == b.modifier { LangCountryModifier }
+        else if self.lang == b.lang && self.country == b.country { LangCountry }
+        else if self.modifier.is_some() && self.modifier == b.modifier { Modifier }
+        else if self.lang == b.lang { Lang }
+        else { None }
     }
 }
 
@@ -110,24 +116,24 @@ mod test {
     }
 
     #[cfg(test)]
-    mod compare {
+    mod match_level {
         use desktop::locale::*;
 
         #[test]
-        fn compare_lang_country() {
+        fn match_level_lang_country() {
             let a: Locale = "en_GB.UTF-8".parse().unwrap();
             let b: Locale = "en_GB".parse().unwrap();
 
-            let res = a.compare(&b);
+            let res = a.match_level(&b);
             assert_eq!(res, MatchLevel::LangCountry);
         }
 
         #[test]
-        fn compare_lang() {
+        fn match_level_lang() {
             let a: Locale = "en_GB.UTF-8".parse().unwrap();
             let b: Locale = "en".parse().unwrap();
 
-            let res = a.compare(&b);
+            let res = a.match_level(&b);
             assert_eq!(res, MatchLevel::Lang);
         }
 

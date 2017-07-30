@@ -1,20 +1,20 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::ffi::OsStr;
-use std::str::FromStr;
 use std::result::Result as StdResult;
-use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 use std::process::{Command, exit};
 use std::os::unix::process::CommandExt;
+use std::io::{BufRead, BufReader};
 
 use walkdir::{DirEntry, WalkDir, WalkDirIterator};
 use xdg::BaseDirectories as XdgDirs;
 
 pub mod errors;
 pub mod locale;
+mod parse;
 
-use locale::{Locale, MatchLevel};
+use locale::Locale;
+use self::parse::read_desktop_entry_group;
 use errors::*;
 
 pub struct DesktopFiles {
@@ -52,7 +52,8 @@ impl DesktopFiles {
                     }
                 }
             })
-            .map(|file| read_desktop_entry(BufReader::new(file)))
+            .map(|file| read_desktop_entry(BufReader::new(file),
+                                           &get_locale_from_env().unwrap_or(Locale::default())))
             .filter_map(|entry| {
                 match entry {
                     Ok(e) => {
@@ -69,51 +70,55 @@ impl DesktopFiles {
     }
 }
 
+fn get_locale_from_env() -> Option<Locale> {
+    unimplemented!();
+}
+
 #[derive(Debug, Default, Builder)]
 pub struct DesktopEntry {
     #[builder(setter(into))]
     pub entry_type: String,
     #[builder(setter(into))]
     pub name: String,
-    #[builder(setter(into), default="None")]
+    #[builder(setter(into), default = "None")]
     pub generic_name: Option<String>,
-    #[builder(default="false")]
+    #[builder(default = "false")]
     pub no_display: bool,
-    #[builder(setter(into), default="None")]
+    #[builder(setter(into), default = "None")]
     pub comment: Option<String>,
-    #[builder(setter(into), default="None")]
+    #[builder(setter(into), default = "None")]
     pub icon: Option<PathBuf>,
-    #[builder(default="false")]
+    #[builder(default = "false")]
     pub hidden: bool,
-    #[builder(default="vec![]")]
+    #[builder(default = "vec![]")]
     pub only_show_in: Vec<String>,
-    #[builder(default="vec![]")]
+    #[builder(default = "vec![]")]
     pub not_show_in: Vec<String>,
-    #[builder(setter(into), default="None")]
+    #[builder(setter(into), default = "None")]
     pub try_exec: Option<String>,
-    #[builder(setter(into), default="None")]
+    #[builder(setter(into), default = "None")]
     pub exec: Option<String>,
-    #[builder(setter(into), default="None")]
+    #[builder(setter(into), default = "None")]
     pub path: Option<PathBuf>,
-    #[builder(default="vec![]")]
+    #[builder(default = "vec![]")]
     pub keywords: Vec<String>,
-    #[builder(default="vec![]")]
+    #[builder(default = "vec![]")]
     pub categories: Vec<String>,
 }
 
 impl DesktopEntry {
     pub fn launch(&self) -> Error {
-        info!("Launching '{}'", self.name);
+        info!("Launching '{}'...", self.name);
         if let Some(ref path) = self.try_exec {
             let path = Path::new(path);
-            if!(path.exists()) {
-                return ErrorKind::ApplicationNotFound.into()
+            if !path.exists() {
+                return ErrorKind::ApplicationNotFound.into();
             }
         }
         let mut cmd = if let Some(ref exec) = self.exec {
             Command::new(exec)
         } else {
-            return ErrorKind::MissingRequiredEntryKey.into()
+            return ErrorKind::MissingRequiredEntryKey.into();
         };
         // TODO launch() args
 
@@ -125,7 +130,7 @@ impl DesktopEntry {
         match cmd.exec().kind() {
             NotFound => {
                 ErrorKind::ApplicationNotFound.into()
-            },
+            }
             _ => {
                 ErrorKind::UnknownError.into()
             }
@@ -149,57 +154,19 @@ pub fn find_all_desktop_files() -> Result<DesktopFiles> {
     Ok(DesktopFiles::new(desktop_files))
 }
 
-struct LocaleString {
-    value: String,
-    locale: Option<Locale>,
-}
-
-impl LocaleString {
-    pub fn new(name: &str, value: &str) -> LocaleString {
-        let name = name.find("[")
-            .map(|i| &name[i + 1..name.len()])
-            .and_then(|locale| locale.rfind("]")
-                .map(|j| &locale[0..j]));
-        LocaleString {
-            value: value.to_string(),
-            locale: name.and_then(|s| s.parse::<Locale>().ok()),
-        }
-    }
-}
-
-fn split_entry(entry: &str) -> Option<(&str, &str)> {
-    entry.find("=")
-        .map(|i| entry.split_at(i))
-        .map(|(name, value)| (name.trim(), value[1..value.len()].trim()))
-}
-
-fn read_desktop_entry<R: BufRead>(input: R) -> Result<DesktopEntry> {
-    let lines = input.lines()
-        .filter_map(|line| line.ok())
-        .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("#"))
-        .skip_while(|line| !line.trim().starts_with(r"[Desktop Entry]"))
-        .skip(1)
-        .take_while(|line| !line.trim().starts_with("["))
-    ;
-    // TODO make Vec<(Locale, DesktopEntry)>, get current locale, return closest match
+fn read_desktop_entry<R: BufRead>(input: R, locale: &Locale) -> Result<DesktopEntry> {
+    let group = read_desktop_entry_group(input, locale)?;
 
     let mut builder = DesktopEntryBuilder::default();
-    for line in lines {
-        match split_entry(&line) {
-            Some((key, value)) => {
-                let i = key.find("[").unwrap_or_else(|| key.len());
-                match key[0..i].trim().as_ref() {
-                    "Type" => builder.entry_type(value),
-                    "Name" => builder.name(value),
-                    "GenericName" => builder.generic_name(value.to_string()),
-                    "NoDisplay" => builder.no_display(value.parse()?),
-                    "Comment" => builder.comment(value.to_string()),
-                    _ => &builder
-                };
-                ()
-            },
-            None => ()
-        }
+    for (key, value) in group.into_iter() {
+        match key.as_ref() {
+            "Type" => builder.entry_type(value),
+            "Name" => builder.name(value),
+            "GenericName" => builder.generic_name(value.to_string()),
+            "NoDisplay" => builder.no_display(value.parse()?),
+            "Comment" => builder.comment(value.to_string()),
+            _ => &builder
+        };
     }
 
     builder.build()
