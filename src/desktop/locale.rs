@@ -19,7 +19,9 @@ impl FromStr for Locale {
         let (modifier, len) = find_after(s, "@");
         let (encoding, len) = find_after(&s[0..len], ".");
         let (country, len) = find_after(&s[0..len], "_");
-        let lang = filter_empty(&s[0..len]).ok_or::<Self::Err>(ErrorKind::InvalidLocale.into())?;
+        let lang = filter_empty(&s[0..len]).ok_or::<Self::Err>(
+            ErrorKind::InvalidLocale.into(),
+        )?;
 
         Ok(Locale {
             lang: lang.to_string(),
@@ -43,11 +45,18 @@ impl Locale {
     pub fn match_level(&self, b: &Self) -> MatchLevel {
         use self::MatchLevel::*;
         if self.lang == b.lang && self.country.is_some() && self.country == b.country &&
-            self.modifier.is_some() && self.modifier == b.modifier { LangCountryModifier }
-        else if self.lang == b.lang && self.country == b.country { LangCountry }
-        else if self.modifier.is_some() && self.modifier == b.modifier { Modifier }
-        else if self.lang == b.lang { Lang }
-        else { None }
+            self.modifier.is_some() && self.modifier == b.modifier
+        {
+            LangCountryModifier
+        } else if self.lang == b.lang && self.country == b.country {
+            LangCountry
+        } else if self.modifier.is_some() && self.modifier == b.modifier {
+            Modifier
+        } else if self.lang == b.lang {
+            Lang
+        } else {
+            None
+        }
     }
 }
 

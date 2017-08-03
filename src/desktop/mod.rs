@@ -23,47 +23,48 @@ pub struct DesktopFiles {
 
 impl DesktopFiles {
     fn new(desktop_files: Vec<PathBuf>) -> Self {
-        DesktopFiles {
-            desktop_files: desktop_files
-        }
+        DesktopFiles { desktop_files: desktop_files }
     }
 
     pub fn find_exact_match(&self, name: &str, locale: Option<Locale>) -> Result<DesktopEntry> {
-        self.parse_files().into_iter()
+        self.parse_files()
+            .into_iter()
             .filter(|entry| entry.entry_type == "Application")
             .filter(|entry| !entry.no_display)
             .skip_while(|entry| entry.name != name)
             .filter(|entry| !entry.hidden)
-            .next().ok_or(ErrorKind::NoMatchFound.into())
+            .next()
+            .ok_or(ErrorKind::NoMatchFound.into())
     }
 
     pub fn parse_files(&self) -> Vec<DesktopEntry> {
-        self.desktop_files.iter()
+        self.desktop_files
+            .iter()
             .map(|buf| File::open(buf.as_path()))
-            .filter_map(|file| {
-                match file {
-                    Ok(e) => {
-                        debug!("Opened file {:?}", e);
-                        Some(e)
-                    }
-                    Err(err) => {
-                        warn!("Error opening file: {}", err);
-                        None
-                    }
+            .filter_map(|file| match file {
+                Ok(e) => {
+                    debug!("Opened file {:?}", e);
+                    Some(e)
+                }
+                Err(err) => {
+                    warn!("Error opening file: {}", err);
+                    None
                 }
             })
-            .map(|file| read_desktop_entry(BufReader::new(file),
-                                           &get_locale_from_env().unwrap_or(Locale::default())))
-            .filter_map(|entry| {
-                match entry {
-                    Ok(e) => {
-                        debug!("Found desktop entry file {:?}", e);
-                        Some(e)
-                    }
-                    Err(err) => {
-                        warn!("Error reading desktop file: {}", err);
-                        None
-                    }
+            .map(|file| {
+                read_desktop_entry(
+                    BufReader::new(file),
+                    &get_locale_from_env().unwrap_or(Locale::default()),
+                )
+            })
+            .filter_map(|entry| match entry {
+                Ok(e) => {
+                    debug!("Found desktop entry file {:?}", e);
+                    Some(e)
+                }
+                Err(err) => {
+                    warn!("Error reading desktop file: {}", err);
+                    None
                 }
             })
             .collect()
@@ -128,12 +129,8 @@ impl DesktopEntry {
         use std::io::Error;
         use std::io::ErrorKind::NotFound;
         match cmd.exec().kind() {
-            NotFound => {
-                ErrorKind::ApplicationNotFound.into()
-            }
-            _ => {
-                ErrorKind::UnknownError.into()
-            }
+            NotFound => ErrorKind::ApplicationNotFound.into(),
+            _ => ErrorKind::UnknownError.into(),
         }
     }
 }
@@ -141,10 +138,11 @@ impl DesktopEntry {
 pub fn find_all_desktop_files() -> Result<DesktopFiles> {
     let xdg = XdgDirs::new()?;
     let data_files = xdg.list_data_files_once("applications");
-    let desktop_files = data_files.into_iter()
+    let desktop_files = data_files
+        .into_iter()
         .filter(|path| match path.extension() {
             Some(os_str) => os_str.to_str() == Some("desktop"),
-            None => false
+            None => false,
         })
         .map(|path| {
             debug!("Found desktop file '{}'", path.as_path().display());
@@ -156,7 +154,11 @@ pub fn find_all_desktop_files() -> Result<DesktopFiles> {
 
 fn read_desktop_entry<R: BufRead>(input: R, locale: &Locale) -> Result<DesktopEntry> {
     let group = parse_desktop_entry_group(
-        input.lines().map(|res| res.chain_err(|| "Error reading file")), locale)?;
+        input.lines().map(
+            |res| res.chain_err(|| "Error reading file"),
+        ),
+        locale,
+    )?;
 
     let mut builder = DesktopEntryBuilder::default();
     for (key, value) in group.into_iter() {
@@ -166,10 +168,9 @@ fn read_desktop_entry<R: BufRead>(input: R, locale: &Locale) -> Result<DesktopEn
             "GenericName" => builder.generic_name(value.to_string()),
             "NoDisplay" => builder.no_display(value.parse()?),
             "Comment" => builder.comment(value.to_string()),
-            _ => &builder
+            _ => &builder,
         };
     }
 
-    builder.build()
-        .map_err(|s| s.into())
+    builder.build().map_err(|s| s.into())
 }

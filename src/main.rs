@@ -30,7 +30,7 @@ fn main() {
         .about(DESCRIPTION)
         .author(AUTHORS)
         .get_matches();
-//    arg_matches.
+    //    arg_matches.
 
     let term = "";
     let apps = find_all_desktop_files().unwrap();
@@ -39,7 +39,7 @@ fn main() {
             debug!("Found match: {:?}", entry);
             let err = entry.launch();
             error!("Error launching entry named '{}': {}", entry.name, err);
-        },
+        }
         Err(err) => {
             error!("Error finding match for '{}': {}", term, err);
         }
