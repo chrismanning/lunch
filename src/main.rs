@@ -12,7 +12,6 @@ extern crate xdg;
 extern crate derive_builder;
 
 use clap::*;
-use error_chain::*;
 
 mod desktop;
 
@@ -34,7 +33,7 @@ fn main() {
 
     let term = "";
     let apps = find_all_desktop_files().unwrap();
-    match apps.find_exact_match(term, None) {
+    match apps.find_exact_match(term) {
         Ok(entry) => {
             debug!("Found match: {:?}", entry);
             let err = entry.launch();

@@ -1,4 +1,3 @@
-use std::io::BufRead;
 use std::collections::HashMap;
 
 use locale::Locale;
@@ -52,20 +51,20 @@ fn parse_group<LineIter>(input: LineIter, section_name: &str) -> Result<Localise
 where
     LineIter: Iterator<Item = Result<String>>,
 {
-    let mut lines: Vec<(String, String)> = input
+    let lines: Vec<(String, String)> = input
         .skip_while(result_filter(matches_group_header_not_named(section_name)))
         .skip(1)
         .filter(result_filter(|line: &String| {
-            !line.trim().is_empty() && !line.trim().starts_with("#")
+            !line.trim().is_empty() && !line.trim().starts_with('#')
         }))
-        .take_while(result_filter(|line: &String| !line.trim().starts_with("[")))
+        .take_while(result_filter(|line: &String| !line.trim().starts_with('[')))
         .filter_map(|line| match line {
-            Ok(line) => split_to_owned("=", &line).map(Ok),
+            Ok(line) => split_to_owned('=', &line).map(Ok),
             Err(err) => Some(Err(err)),
         })
         .collect::<Result<_>>()?;
     let mut group = LocalisedGroup::default();
-    for (key, value) in lines.into_iter() {
+    for (key, value) in lines {
         let (key, locale) = parse_key(&key);
         let &mut LocalisedValue(ref mut localised_value) =
             group.entry(key.to_owned()).or_insert_with(
@@ -80,15 +79,15 @@ fn result_filter<T: Sized, P: Sized>(mut pred: P) -> impl FnMut(&Result<T>) -> b
 where
     P: FnMut(&T) -> bool + Sized,
 {
-    move |t| match t {
-        &Ok(ref val) => pred(val),
-        &Err(ref err) => false,
+    move |t| match *t {
+        Ok(ref val) => pred(val),
+        Err(_) => false,
     }
 }
 
-fn parse_key<'a>(line: &'a str) -> (&'a str, Locale) {
-    line.find("[")
-        .and_then(|i| line[i + 1..line.len()].find("]").map(|j| (i, j)))
+fn parse_key(line: &str) -> (&str, Locale) {
+    line.find('[')
+        .and_then(|i| line[i + 1..line.len()].find(']').map(|j| (i, j)))
         .map(|(i, j)| (&line[0..i], &line[i + 1..j + i + 1]))
         .and_then(|(key, locale)| {
             locale.parse::<Locale>().ok().map(|locale| (key, locale))
@@ -127,13 +126,13 @@ fn matches_group_header_not_named(group_name: &str) -> impl FnMut(&String) -> bo
     move |line| !line.trim().starts_with(&header)
 }
 
-fn split<'a>(delim: &str, s: &'a str) -> Option<(&'a str, &'a str)> {
+fn split(delim: char, s: &str) -> Option<(&str, &str)> {
     s.find(delim).map(|i| s.split_at(i)).map(|(name, value)| {
         (name.trim(), value[1..value.len()].trim())
     })
 }
 
-fn split_to_owned(delim: &str, s: &str) -> Option<(String, String)> {
+fn split_to_owned(delim: char, s: &str) -> Option<(String, String)> {
     if let Some((left, right)) = split(delim, s) {
         Some((left.to_owned(), right.to_owned()))
     } else {

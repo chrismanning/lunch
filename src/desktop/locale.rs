@@ -16,9 +16,9 @@ impl FromStr for Locale {
     fn from_str(s: &str) -> StdResult<Self, Self::Err> {
         let s = s.trim();
 
-        let (modifier, len) = find_after(s, "@");
-        let (encoding, len) = find_after(&s[0..len], ".");
-        let (country, len) = find_after(&s[0..len], "_");
+        let (modifier, len) = find_after(s, '@');
+        let (encoding, len) = find_after(&s[0..len], '.');
+        let (country, len) = find_after(&s[0..len], '_');
         let lang = filter_empty(&s[0..len]).ok_or::<Self::Err>(
             ErrorKind::InvalidLocale.into(),
         )?;
@@ -155,7 +155,7 @@ mod test {
     }
 }
 
-fn find_after<'a>(s: &'a str, after_pat: &str) -> (Option<&'a str>, usize) {
+fn find_after(s: &str, after_pat: char) -> (Option<&str>, usize) {
     let pos = s.rfind(after_pat);
     let m = pos.map(|pos| s[pos + 1..s.len()].trim());
     (m.and_then(filter_empty), pos.unwrap_or_else(|| s.len()))

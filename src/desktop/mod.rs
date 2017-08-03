@@ -1,12 +1,10 @@
 use std::fs::File;
-use std::ffi::OsStr;
 use std::result::Result as StdResult;
 use std::path::{Path, PathBuf};
-use std::process::{Command, exit};
+use std::process::Command;
 use std::os::unix::process::CommandExt;
 use std::io::{BufRead, BufReader};
 
-use walkdir::{DirEntry, WalkDir, WalkDirIterator};
 use xdg::BaseDirectories as XdgDirs;
 
 pub mod errors;
@@ -26,15 +24,14 @@ impl DesktopFiles {
         DesktopFiles { desktop_files: desktop_files }
     }
 
-    pub fn find_exact_match(&self, name: &str, locale: Option<Locale>) -> Result<DesktopEntry> {
+    pub fn find_exact_match(&self, name: &str) -> Result<DesktopEntry> {
         self.parse_files()
             .into_iter()
             .filter(|entry| entry.entry_type == "Application")
             .filter(|entry| !entry.no_display)
             .skip_while(|entry| entry.name != name)
-            .filter(|entry| !entry.hidden)
-            .next()
-            .ok_or(ErrorKind::NoMatchFound.into())
+            .find(|entry| !entry.hidden)
+            .ok_or_else(|| ErrorKind::NoMatchFound.into())
     }
 
     pub fn parse_files(&self) -> Vec<DesktopEntry> {
@@ -54,7 +51,7 @@ impl DesktopFiles {
             .map(|file| {
                 read_desktop_entry(
                     BufReader::new(file),
-                    &get_locale_from_env().unwrap_or(Locale::default()),
+                    &get_locale_from_env().unwrap_or_default(),
                 )
             })
             .filter_map(|entry| match entry {
@@ -126,7 +123,6 @@ impl DesktopEntry {
         if let Some(ref path) = self.path {
             cmd.current_dir(path);
         }
-        use std::io::Error;
         use std::io::ErrorKind::NotFound;
         match cmd.exec().kind() {
             NotFound => ErrorKind::ApplicationNotFound.into(),
@@ -161,7 +157,7 @@ fn read_desktop_entry<R: BufRead>(input: R, locale: &Locale) -> Result<DesktopEn
     )?;
 
     let mut builder = DesktopEntryBuilder::default();
-    for (key, value) in group.into_iter() {
+    for (key, value) in group {
         match key.as_ref() {
             "Type" => builder.entry_type(value),
             "Name" => builder.name(value),
