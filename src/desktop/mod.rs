@@ -14,7 +14,7 @@ pub mod locale;
 mod parse;
 
 use locale::Locale;
-use self::parse::read_desktop_entry_group;
+use self::parse::parse_desktop_entry_group;
 use errors::*;
 
 pub struct DesktopFiles {
@@ -155,7 +155,8 @@ pub fn find_all_desktop_files() -> Result<DesktopFiles> {
 }
 
 fn read_desktop_entry<R: BufRead>(input: R, locale: &Locale) -> Result<DesktopEntry> {
-    let group = read_desktop_entry_group(input, locale)?;
+    let group = parse_desktop_entry_group(
+        input.lines().map(|res| res.chain_err(|| "Error reading file")), locale)?;
 
     let mut builder = DesktopEntryBuilder::default();
     for (key, value) in group.into_iter() {

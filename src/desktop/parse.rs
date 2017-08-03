@@ -6,9 +6,10 @@ use desktop::errors::*;
 
 type Group = HashMap<String, String>;
 
-pub fn read_desktop_entry_group<R: BufRead>(input: R, locale: &Locale) -> Result<Group> {
-    let localised_group = parse_group(
-        input.lines().map(|res| res.chain_err(|| "Error reading file")), "Desktop Entry");
+pub fn parse_desktop_entry_group<LineIter>(input: LineIter, locale: &Locale) -> Result<Group>
+    where LineIter: Iterator<Item = Result<String>>
+{
+    let localised_group = parse_group(input, "Desktop Entry");
     localised_group.map(|localised_group| resolve_localised_group(localised_group, locale))
 }
 
@@ -35,7 +36,7 @@ impl LocalisedValue {
 }
 
 fn parse_group<LineIter>(input: LineIter, section_name: &str) -> Result<LocalisedGroup>
-where LineIter: Iterator<Item = Result<String>> {
+    where LineIter: Iterator<Item = Result<String>> {
     let mut lines: Vec<(String, String)> = input
         .skip_while(result_filter(matches_group_header_not_named(section_name)))
         .skip(1)
