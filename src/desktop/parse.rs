@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use locale::Locale;
-use desktop::errors::*;
+use errors::*;
+use desktop::iteratorext::IteratorExt;
 
 type Group = HashMap<String, String>;
 
@@ -52,12 +53,12 @@ where
     LineIter: Iterator<Item = Result<String>>,
 {
     let lines: Vec<(String, String)> = input
-        .skip_while(result_filter(matches_group_header_not_named(section_name)))
+        .skip_while_result(matches_group_header_not_named(section_name))
         .skip(1)
-        .filter(result_filter(|line: &String| {
+        .filter_result(|line| {
             !line.trim().is_empty() && !line.trim().starts_with('#')
-        }))
-        .take_while(result_filter(|line: &String| !line.trim().starts_with('[')))
+        })
+        .take_while_result(|line| !line.trim().starts_with('['))
         .filter_map(|line| match line {
             Ok(line) => split_to_owned('=', &line).map(Ok),
             Err(err) => Some(Err(err)),
@@ -73,16 +74,6 @@ where
         localised_value.push((locale, value));
     }
     Ok(group)
-}
-
-fn result_filter<T: Sized, P: Sized>(mut pred: P) -> impl FnMut(&Result<T>) -> bool
-where
-    P: FnMut(&T) -> bool + Sized,
-{
-    move |t| match *t {
-        Ok(ref val) => pred(val),
-        Err(_) => false,
-    }
 }
 
 fn parse_key(line: &str) -> (&str, Locale) {

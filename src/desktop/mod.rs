@@ -10,6 +10,7 @@ use xdg::BaseDirectories as XdgDirs;
 pub mod errors;
 pub mod locale;
 mod parse;
+mod iteratorext;
 
 use locale::Locale;
 use self::parse::parse_desktop_entry_group;
