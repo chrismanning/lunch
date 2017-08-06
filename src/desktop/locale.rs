@@ -19,9 +19,8 @@ impl FromStr for Locale {
         let (modifier, len) = find_after(s, '@');
         let (encoding, len) = find_after(&s[0..len], '.');
         let (country, len) = find_after(&s[0..len], '_');
-        let lang = filter_empty(&s[0..len]).ok_or::<Self::Err>(
-            ErrorKind::InvalidLocale.into(),
-        )?;
+        let lang = filter_empty(&s[0..len])
+            .ok_or_else::<Self::Err, _>(|| ErrorKind::InvalidLocale.into())?;
 
         Ok(Locale {
             lang: lang.to_string(),

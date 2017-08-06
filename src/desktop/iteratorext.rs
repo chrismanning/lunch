@@ -57,7 +57,7 @@ where
     type Item = Result<T, E>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(result) = self.iterator.next() {
+        for result in self.iterator.by_ref() {
             match result {
                 Ok(t) => {
                     if (self.predicate)(&t) {
