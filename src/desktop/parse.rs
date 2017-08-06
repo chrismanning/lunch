@@ -87,25 +87,22 @@ fn parse_key(line: &str) -> (&str, Locale) {
 }
 
 #[cfg(test)]
-mod test {
-    #[cfg(test)]
-    mod parse_key {
-        use desktop::parse::parse_key;
-        use desktop::locale::Locale;
+mod parse_key_tests {
+    use desktop::parse::parse_key;
+    use desktop::locale::Locale;
 
-        #[test]
-        fn no_locale() {
-            let (key, locale) = parse_key("Key");
-            assert_eq!(key, "Key");
-            assert_eq!(locale, Locale::default());
-        }
+    #[test]
+    fn no_locale() {
+        let (key, locale) = parse_key("Key");
+        assert_eq!(key, "Key");
+        assert_eq!(locale, Locale::default());
+    }
 
-        #[test]
-        fn locale() {
-            let (key, locale) = parse_key("Key[lang]");
-            assert_eq!(key, "Key");
-            assert_eq!(locale, "lang".parse().unwrap());
-        }
+    #[test]
+    fn locale() {
+        let (key, locale) = parse_key("Key[lang]");
+        assert_eq!(key, "Key");
+        assert_eq!(locale, "lang".parse().unwrap());
     }
 }
 
@@ -128,5 +125,20 @@ fn split_to_owned(delim: char, s: &str) -> Option<(String, String)> {
         Some((left.to_owned(), right.to_owned()))
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod split_tests {
+    use desktop::parse::split;
+
+    #[test]
+    fn split_match() {
+        assert_eq!(split('b', "abc"), Some(("a", "c")))
+    }
+
+    #[test]
+    fn no_match() {
+        assert_eq!(split('-', "abc"), None)
     }
 }
