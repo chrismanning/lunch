@@ -2,7 +2,7 @@ use std::str::FromStr;
 use desktop::StdResult;
 use desktop::errors::{Error, ErrorKind};
 
-#[derive(Debug, Default, Eq, PartialEq, Hash)]
+#[derive(Debug, Default, Eq, PartialEq, Hash, Clone)]
 pub struct Locale {
     lang: String,
     country: Option<String>,

@@ -16,19 +16,42 @@ where
     })
 }
 
-fn resolve_localised_group(localised_group: LocalisedGroup, locale: &Locale) -> Group {
+fn resolve_localised_group(mut localised_group: LocalisedGroup, locale: &Locale) -> Group {
     localised_group
         .into_iter()
-        .map(|(key, localised_value)| {
+        .map(|(key, mut localised_value)| {
             (
                 key,
-                localised_value.get(locale).or_else(|| {
-                    localised_value.get(&Locale::default())
+                localised_value.remove(locale).or_else(|| {
+                    localised_value.remove(&Locale::default())
                 }),
             )
         })
         .filter_map(|(key, value)| value.map(|value| (key, value)))
         .collect()
+}
+
+#[cfg(test)]
+mod resolve_localised_group_tests {
+    use desktop::locale::*;
+    use super::*;
+
+    #[test]
+    fn test() {
+        let localised_group = hashmap!{
+            "Key1".to_owned() => LocalisedValue(hashmap!{
+                Locale::default() => "def".to_owned(),
+                "en".parse::<Locale>().unwrap() => "en".to_owned(),
+            }),
+            "Key2".to_owned() => LocalisedValue(hashmap!{
+                "C".parse::<Locale>().unwrap() => "C".to_owned(),
+            })
+        };
+        assert_eq!(resolve_localised_group(localised_group, &"C".parse().unwrap()), hashmap!{
+            "Key1".to_owned() => "def".to_owned(),
+            "Key2".to_owned() => "C".to_owned(),
+        });
+    }
 }
 
 type LocalisedGroup = HashMap<String, LocalisedValue>;
@@ -37,12 +60,32 @@ type LocalisedGroup = HashMap<String, LocalisedValue>;
 struct LocalisedValue(HashMap<Locale, String>);
 
 impl LocalisedValue {
-    fn get(&self, locale: &Locale) -> Option<String> {
+    fn get(&self, locale: &Locale) -> Option<&String> {
+        let key = self.get_key(locale);
+
+        let &LocalisedValue(ref localised_value) = self;
+        key.and_then(|key| localised_value.get(key))
+    }
+
+    fn remove(&mut self, locale: &Locale) -> Option<String> {
+        let key = self.get_key(locale).map(|x| x.clone());
+
+        let &mut LocalisedValue(ref mut localised_value) = self;
+        key.and_then(|key| localised_value.remove(&key))
+    }
+
+    fn get_key(&self, locale: &Locale) -> Option<&Locale> {
+        use desktop::locale::MatchLevel;
+
         let &LocalisedValue(ref localised_value) = self;
         localised_value
             .iter()
             .max_by_key(|&(ref locale_key, _)| locale.match_level(locale_key))
-            .map(|(_, b)| b.clone())
+            .and_then(|(locale_key, val)| if locale.match_level(locale_key) == MatchLevel::None {
+                None
+            } else {
+                Some(locale_key)
+            })
     }
 }
 
@@ -58,7 +101,7 @@ mod localised_value_tests {
             "en_GB".parse().unwrap() => "en_GB".to_owned(),
         });
         let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
-        assert_eq!(&value, "en_GB");
+        assert_eq!(value, "en_GB");
     }
 
     #[test]
@@ -67,7 +110,7 @@ mod localised_value_tests {
             "en".parse().unwrap() => "en".to_owned(),
         });
         let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
-        assert_eq!(&value, "en");
+        assert_eq!(value, "en");
     }
 
     #[test]
@@ -77,7 +120,7 @@ mod localised_value_tests {
             "en_GB".parse().unwrap() => "en_GB".to_owned(),
         });
         let value = localised_value.get(&"en".parse().unwrap()).unwrap();
-        assert_eq!(&value, "en");
+        assert_eq!(value, "en");
     }
 
     #[test]
@@ -86,7 +129,7 @@ mod localised_value_tests {
             "en".parse().unwrap() => "en".to_owned(),
         });
         let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
-        assert_eq!(&value, "en");
+        assert_eq!(value, "en");
     }
 
     #[test]
@@ -98,7 +141,7 @@ mod localised_value_tests {
             "sr".parse().unwrap() => "sr".to_owned(),
         });
         let value = localised_value.get(&"sr_YU@Latn".parse().unwrap()).unwrap();
-        assert_eq!(&value, "sr_YU");
+        assert_eq!(value, "sr_YU");
     }
 }
 
