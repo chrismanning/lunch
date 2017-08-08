@@ -10,6 +10,8 @@ extern crate clap;
 extern crate xdg;
 #[macro_use]
 extern crate derive_builder;
+#[macro_use]
+extern crate maplit;
 
 use clap::*;
 

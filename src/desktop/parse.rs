@@ -33,6 +33,7 @@ fn resolve_localised_group(localised_group: LocalisedGroup, locale: &Locale) -> 
 
 type LocalisedGroup = HashMap<String, LocalisedValue>;
 
+#[derive(Debug, PartialEq, Eq)]
 struct LocalisedValue(Vec<(Locale, String)>);
 
 impl LocalisedValue {
@@ -48,17 +49,23 @@ impl LocalisedValue {
     }
 }
 
-fn parse_group<LineIter>(input: LineIter, section_name: &str) -> Result<LocalisedGroup>
+fn parse_group<LineIter>(mut input: LineIter, group_name: &str) -> Result<LocalisedGroup>
 where
     LineIter: Iterator<Item = Result<String>>,
 {
+    let header_pred = {
+        let mut header = "[".to_owned();
+        header.push_str(group_name.trim());
+        header.push(']');
+
+        move |line: &String| !line.trim().starts_with(&header)
+    };
     let lines: Vec<(String, String)> = input
-        .skip_while_result(matches_group_header_not_named(section_name))
+        .map_result(|line| line.trim().to_owned())
+        .skip_while_result(header_pred)
         .skip(1)
-        .filter_result(|line| {
-            !line.trim().is_empty() && !line.trim().starts_with('#')
-        })
-        .take_while_result(|line| !line.trim().starts_with('['))
+        .filter_result(|line| !line.is_empty() && !line.starts_with('#'))
+        .take_while_result(|line| !line.starts_with('['))
         .filter_map(|line| match line {
             Ok(line) => split_to_owned('=', &line).map(Ok),
             Err(err) => Some(Err(err)),
@@ -76,19 +83,61 @@ where
     Ok(group)
 }
 
+#[cfg(test)]
+mod parse_group_tests {
+    use super::*;
+
+    #[test]
+    fn header_only() {
+        let input = "[group header]";
+        let localised_group = parse_group(
+            input.lines().map(|line| Ok(line.to_owned())),
+            "group header",
+        );
+        assert_eq!(localised_group.unwrap(), hashmap!{});
+    }
+
+    #[test]
+    fn single_group() {
+        let input = "[group header]
+        # Comment
+        Key1=Value1
+        Key1[en]=Value2
+        Key2[C]=Value3";
+        let localised_group = parse_group(
+            input.lines().map(|line| Ok(line.to_owned())),
+            "group header",
+        );
+        assert_eq!(
+            localised_group.unwrap(),
+            hashmap!{
+            "Key1".to_owned() => LocalisedValue(vec![
+                (Locale::default(), "Value1".to_owned()),
+                ("en".parse::<Locale>().unwrap(), "Value2".to_owned()),
+            ]),
+            "Key2".to_owned() => LocalisedValue(vec![
+                ("C".parse::<Locale>().unwrap(), "Value3".to_owned()),
+            ])
+        }
+        );
+    }
+}
+
 fn parse_key(line: &str) -> (&str, Locale) {
-    line.find('[')
-        .and_then(|i| line[i + 1..line.len()].find(']').map(|j| (i, j)))
-        .map(|(i, j)| (&line[0..i], &line[i + 1..j + i + 1]))
-        .and_then(|(key, locale)| {
+    line.rfind(']')
+        .and_then(|j| line[0..j].rfind('[').map(|i| (i, j)))
+        .and_then(|(i, j)| if j - i > 1 {
+            let (key, locale) = (&line[0..i], &line[i + 1..j]);
             locale.parse::<Locale>().ok().map(|locale| (key, locale))
+        } else {
+            Some((&line[0..i], Locale::default()))
         })
         .unwrap_or_else(|| (line, Locale::default()))
 }
 
 #[cfg(test)]
 mod parse_key_tests {
-    use desktop::parse::parse_key;
+    use super::parse_key;
     use desktop::locale::Locale;
 
     #[test]
@@ -104,14 +153,13 @@ mod parse_key_tests {
         assert_eq!(key, "Key");
         assert_eq!(locale, "lang".parse().unwrap());
     }
-}
 
-fn matches_group_header_not_named(group_name: &str) -> impl FnMut(&String) -> bool {
-    let mut header = "[".to_owned();
-    header.push_str(group_name.trim());
-    header.push(']');
-
-    move |line| !line.trim().starts_with(&header)
+    #[test]
+    fn empty_locale() {
+        let (key, locale) = parse_key("Key[]");
+        assert_eq!(key, "Key");
+        assert_eq!(locale, Locale::default());
+    }
 }
 
 fn split(delim: char, s: &str) -> Option<(&str, &str)> {
@@ -130,7 +178,7 @@ fn split_to_owned(delim: char, s: &str) -> Option<(String, String)> {
 
 #[cfg(test)]
 mod split_tests {
-    use desktop::parse::split;
+    use super::split;
 
     #[test]
     fn split_match() {

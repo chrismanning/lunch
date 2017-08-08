@@ -36,6 +36,17 @@ pub trait IteratorExt {
             flag: false,
         }
     }
+
+    fn map_result<F, T, E, U>(self, f: F) -> MapResult<Self, F>
+    where
+        Self: Iterator<Item = Result<T, E>> + Sized,
+        F: FnMut(T) -> U,
+    {
+        MapResult {
+            iterator: self,
+            f: f,
+        }
+    }
 }
 
 impl<Iter: ?Sized> IteratorExt for Iter
@@ -120,7 +131,7 @@ where
         for x in self.iterator.by_ref() {
             match x {
                 Ok(x) => {
-                    self.flag = !(self.predicate)(&x);
+                    self.flag = self.flag || !(self.predicate)(&x);
                     if self.flag {
                         return Some(Ok(x));
                     }
@@ -129,6 +140,23 @@ where
             }
         }
         None
+    }
+}
+
+pub struct MapResult<Iter, F> {
+    iterator: Iter,
+    f: F,
+}
+
+impl<Iter, T, E, U, F> Iterator for MapResult<Iter, F>
+where
+    Iter: Iterator<Item = Result<T, E>>,
+    F: FnMut(T) -> U,
+{
+    type Item = Result<U, E>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iterator.next().map(|v| v.map(&mut self.f))
     }
 }
 
@@ -159,5 +187,12 @@ mod test {
         let input = vec![Ok(1), Ok(2), Err("er"), Ok(3), Ok(4), Err("er")];
         let res: Vec<_> = input.into_iter().skip_while_result(|x| *x < 4).collect();
         assert_eq!(res, vec![Err("er"), Ok(4), Err("er")]);
+    }
+
+    #[test]
+    pub fn map_result() {
+        let input = vec![Ok(1), Ok(2), Err("er"), Ok(3), Ok(4), Err("er")];
+        let res: Vec<_> = input.into_iter().map_result(|x| x * 2).collect();
+        assert_eq!(res, vec![Ok(2), Ok(4), Err("er"), Ok(6), Ok(8), Err("er")]);
     }
 }

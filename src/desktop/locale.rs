@@ -31,6 +31,16 @@ impl FromStr for Locale {
     }
 }
 
+fn find_after(s: &str, after_pat: char) -> (Option<&str>, usize) {
+    let pos = s.rfind(after_pat);
+    let m = pos.map(|pos| s[pos + 1..s.len()].trim());
+    (m.and_then(filter_empty), pos.unwrap_or_else(|| s.len()))
+}
+
+fn filter_empty(s: &str) -> Option<&str> {
+    if s.is_empty() { None } else { Some(s) }
+}
+
 #[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone, Copy)]
 pub enum MatchLevel {
     None,
@@ -152,14 +162,4 @@ mod test {
             assert_eq!(Ordering::Greater, ord);
         }
     }
-}
-
-fn find_after(s: &str, after_pat: char) -> (Option<&str>, usize) {
-    let pos = s.rfind(after_pat);
-    let m = pos.map(|pos| s[pos + 1..s.len()].trim());
-    (m.and_then(filter_empty), pos.unwrap_or_else(|| s.len()))
-}
-
-fn filter_empty(s: &str) -> Option<&str> {
-    if s.is_empty() { None } else { Some(s) }
 }
