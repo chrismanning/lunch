@@ -81,10 +81,8 @@ impl LocalisedValue {
         localised_value
             .iter()
             .max_by_key(|&(ref locale_key, _)| locale.match_level(locale_key))
-            .and_then(|(locale_key, val)| if locale.match_level(locale_key) == MatchLevel::None {
-                None
-            } else {
-                Some(locale_key)
+            .and_then(|(locale_key, _)| {
+                locale.match_level(locale_key).and(Some(locale_key))
             })
     }
 }

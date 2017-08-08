@@ -43,27 +43,27 @@ fn filter_empty(s: &str) -> Option<&str> {
 
 #[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone, Copy)]
 pub enum MatchLevel {
-    None,
     Lang,
     LangCountry,
     LangCountryModifier,
 }
 
 impl Locale {
-    pub fn match_level(&self, b: &Self) -> MatchLevel {
+    pub fn match_level(&self, b: &Self) -> Option<MatchLevel> {
         use self::MatchLevel::*;
         if !self.modifier.is_some() && b.modifier.is_some() {
             None
         } else if !self.country.is_some() && b.country.is_some() {
             None
         } else if self.lang == b.lang && self.country.is_some() && self.country == b.country &&
-            self.modifier.is_some() && self.modifier == b.modifier
+                   self.modifier.is_some() &&
+                   self.modifier == b.modifier
         {
-            LangCountryModifier
+            Some(LangCountryModifier)
         } else if self.lang == b.lang && self.country == b.country {
-            LangCountry
+            Some(LangCountry)
         } else if self.lang == b.lang {
-            Lang
+            Some(Lang)
         } else {
             None
         }
@@ -144,7 +144,7 @@ mod test {
             let b: Locale = "en_GB".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, MatchLevel::LangCountry);
+            assert_eq!(res, Some(MatchLevel::LangCountry));
         }
 
         #[test]
@@ -153,7 +153,7 @@ mod test {
             let b: Locale = "en".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, MatchLevel::Lang);
+            assert_eq!(res, Some(MatchLevel::Lang));
         }
 
         #[test]
@@ -168,7 +168,7 @@ mod test {
             let a: Locale = "sr_YU@Latn".parse().unwrap();
             let b: Locale = "sr_YU".parse().unwrap();
 
-            assert_eq!(MatchLevel::LangCountry, a.match_level(&b));
+            assert_eq!(Some(MatchLevel::LangCountry), a.match_level(&b));
         }
     }
 }
