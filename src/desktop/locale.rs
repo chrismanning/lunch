@@ -2,7 +2,7 @@ use std::str::FromStr;
 use desktop::StdResult;
 use desktop::errors::{Error, ErrorKind};
 
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Default, Eq, PartialEq, Hash)]
 pub struct Locale {
     lang: String,
     country: Option<String>,
@@ -129,7 +129,7 @@ mod test {
         #[should_panic]
         fn from_str_no_lang() {
             let s = "_GB.UTF-8";
-            let locale: Locale = s.parse().unwrap();
+            s.parse::<Locale>().unwrap();
         }
     }
 

@@ -34,22 +34,19 @@ fn resolve_localised_group(localised_group: LocalisedGroup, locale: &Locale) -> 
 type LocalisedGroup = HashMap<String, LocalisedValue>;
 
 #[derive(Debug, PartialEq, Eq)]
-struct LocalisedValue(Vec<(Locale, String)>);
+struct LocalisedValue(HashMap<Locale, String>);
 
 impl LocalisedValue {
     fn get(&self, locale: &Locale) -> Option<String> {
         let &LocalisedValue(ref localised_value) = self;
         localised_value
             .iter()
-            .map(|&(ref locale_key, ref value)| {
-                (locale_key.match_level(locale), value)
-            })
-            .max_by_key(|&(match_level, _)| match_level)
-            .map(|(_, value)| value.to_owned())
+            .max_by_key(|&(ref locale_key, _)| locale_key.match_level(locale))
+            .map(|(_, b)| b.clone())
     }
 }
 
-fn parse_group<LineIter>(mut input: LineIter, group_name: &str) -> Result<LocalisedGroup>
+fn parse_group<LineIter>(input: LineIter, group_name: &str) -> Result<LocalisedGroup>
 where
     LineIter: Iterator<Item = Result<String>>,
 {
@@ -76,9 +73,9 @@ where
         let (key, locale) = parse_key(&key);
         let &mut LocalisedValue(ref mut localised_value) =
             group.entry(key.to_owned()).or_insert_with(
-                || LocalisedValue(vec![]),
+                || LocalisedValue(hashmap!{}),
             );
-        localised_value.push((locale, value));
+        localised_value.insert(locale, value);
     }
     Ok(group)
 }
@@ -90,10 +87,8 @@ mod parse_group_tests {
     #[test]
     fn header_only() {
         let input = "[group header]";
-        let localised_group = parse_group(
-            input.lines().map(|line| Ok(line.to_owned())),
-            "group header",
-        );
+        let lines = input.lines().map(|line| Ok(line.to_owned()));
+        let localised_group = parse_group(lines, "group header");
         assert_eq!(localised_group.unwrap(), hashmap!{});
     }
 
@@ -111,13 +106,40 @@ mod parse_group_tests {
         assert_eq!(
             localised_group.unwrap(),
             hashmap!{
-            "Key1".to_owned() => LocalisedValue(vec![
-                (Locale::default(), "Value1".to_owned()),
-                ("en".parse::<Locale>().unwrap(), "Value2".to_owned()),
-            ]),
-            "Key2".to_owned() => LocalisedValue(vec![
-                ("C".parse::<Locale>().unwrap(), "Value3".to_owned()),
-            ])
+            "Key1".to_owned() => LocalisedValue(hashmap!{
+                Locale::default() => "Value1".to_owned(),
+                "en".parse::<Locale>().unwrap() => "Value2".to_owned(),
+            }),
+            "Key2".to_owned() => LocalisedValue(hashmap!{
+                "C".parse::<Locale>().unwrap() => "Value3".to_owned(),
+            })
+        }
+        );
+    }
+
+    #[test]
+    fn multiple_groups() {
+        let input = "[group header]
+        # Comment
+        Key1=Value1
+        Key1[en]=Value2
+        Key2[C]=Value3
+
+        [Another Group]
+        # Top comment
+        Key=Value
+        # Middle comment
+        Key=Overwritten Value
+        # Bottom comment
+        ";
+        let lines = input.lines().map(|line| Ok(line.to_owned()));
+        let localised_group = parse_group(lines, "Another Group");
+        assert_eq!(
+            localised_group.unwrap(),
+            hashmap!{
+            "Key".to_owned() => LocalisedValue(hashmap!{
+                Locale::default() => "Overwritten Value".to_owned(),
+            }),
         }
         );
     }
