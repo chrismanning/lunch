@@ -45,7 +45,6 @@ fn filter_empty(s: &str) -> Option<&str> {
 pub enum MatchLevel {
     None,
     Lang,
-    Modifier,
     LangCountry,
     LangCountryModifier,
 }
@@ -53,14 +52,16 @@ pub enum MatchLevel {
 impl Locale {
     pub fn match_level(&self, b: &Self) -> MatchLevel {
         use self::MatchLevel::*;
-        if self.lang == b.lang && self.country.is_some() && self.country == b.country &&
+        if !self.modifier.is_some() && b.modifier.is_some() {
+            None
+        } else if !self.country.is_some() && b.country.is_some() {
+            None
+        } else if self.lang == b.lang && self.country.is_some() && self.country == b.country &&
             self.modifier.is_some() && self.modifier == b.modifier
         {
             LangCountryModifier
         } else if self.lang == b.lang && self.country == b.country {
             LangCountry
-        } else if self.modifier.is_some() && self.modifier == b.modifier {
-            Modifier
         } else if self.lang == b.lang {
             Lang
         } else {
@@ -156,10 +157,18 @@ mod test {
         }
 
         #[test]
-        fn match_level() {
+        fn match_level_ord() {
             use std::cmp::Ordering;
             let ord = MatchLevel::LangCountryModifier.cmp(&MatchLevel::LangCountry);
             assert_eq!(Ordering::Greater, ord);
+        }
+
+        #[test]
+        fn spec_example() {
+            let a: Locale = "sr_YU@Latn".parse().unwrap();
+            let b: Locale = "sr_YU".parse().unwrap();
+
+            assert_eq!(MatchLevel::LangCountry, a.match_level(&b));
         }
     }
 }

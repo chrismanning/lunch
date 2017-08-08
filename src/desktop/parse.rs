@@ -41,8 +41,64 @@ impl LocalisedValue {
         let &LocalisedValue(ref localised_value) = self;
         localised_value
             .iter()
-            .max_by_key(|&(ref locale_key, _)| locale_key.match_level(locale))
+            .max_by_key(|&(ref locale_key, _)| locale.match_level(locale_key))
             .map(|(_, b)| b.clone())
+    }
+}
+
+#[cfg(test)]
+mod localised_value_tests {
+    use desktop::locale::Locale;
+    use super::LocalisedValue;
+
+    #[test]
+    fn get_exact() {
+        let localised_value = LocalisedValue(hashmap!{
+            "en".parse().unwrap() => "en".to_owned(),
+            "en_GB".parse().unwrap() => "en_GB".to_owned(),
+        });
+        let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
+        assert_eq!(&value, "en_GB");
+    }
+
+    #[test]
+    fn get_same_lang() {
+        let localised_value = LocalisedValue(hashmap!{
+            "en".parse().unwrap() => "en".to_owned(),
+        });
+        let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
+        assert_eq!(&value, "en");
+    }
+
+    #[test]
+    fn get_only_lang() {
+        let localised_value = LocalisedValue(hashmap!{
+            "en".parse().unwrap() => "en".to_owned(),
+            "en_GB".parse().unwrap() => "en_GB".to_owned(),
+        });
+        let value = localised_value.get(&"en".parse().unwrap()).unwrap();
+        assert_eq!(&value, "en");
+    }
+
+    #[test]
+    fn get_too_specific() {
+        let localised_value = LocalisedValue(hashmap!{
+            "en".parse().unwrap() => "en".to_owned(),
+        });
+        let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
+        assert_eq!(&value, "en");
+    }
+
+    #[test]
+    fn get_precedence() {
+        let localised_value = LocalisedValue(hashmap!{
+            Locale::default() => "def".to_owned(),
+            "sr_YU".parse().unwrap() => "sr_YU".to_owned(),
+            "sr@Latn".parse().unwrap() => "sr@Latn".to_owned(),
+            "sr".parse().unwrap() => "sr".to_owned(),
+        });
+        let value = localised_value.get(&"sr_YU@Latn".parse().unwrap()).unwrap();
+        assert_eq!(&value, "sr_YU");
     }
 }
 
