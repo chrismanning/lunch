@@ -104,7 +104,7 @@ impl LocalisedValue {
             .iter()
             .enumerate()
             .map(|(idx, &(ref key, _))| (idx, key))
-            .max_by_key(|&(_, ref locale_key)| locale.match_level(&locale_key))
+            .max_by_key(|&(_, locale_key)| locale.match_level(locale_key))
             .and_then(|(idx, locale_key)| {
                 locale.match_level(locale_key).and(Some(idx))
             })
@@ -196,7 +196,7 @@ where
     let mut localised_group = LocalisedGroup::default();
     for (key, value) in lines {
         let (key, locale) = parse_key(&key);
-        let ref mut localised_value = localised_group.group.entry(key.to_owned()).or_insert_with(
+        let mut localised_value = localised_group.group.entry(key.to_owned()).or_insert_with(
             || {
                 LocalisedValue::default()
             },

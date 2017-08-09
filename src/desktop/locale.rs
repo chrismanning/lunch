@@ -45,6 +45,7 @@ fn filter_empty(s: &str) -> Option<&str> {
 #[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone, Copy)]
 pub enum MatchLevel {
     Lang,
+    LangModifier,
     LangCountry,
     LangCountryModifier,
 }
@@ -52,17 +53,23 @@ pub enum MatchLevel {
 impl Locale {
     pub fn match_level(&self, b: &Self) -> Option<MatchLevel> {
         use self::MatchLevel::*;
-        if !self.modifier.is_some() && b.modifier.is_some() {
-            None
-        } else if !self.country.is_some() && b.country.is_some() {
+        if (!self.modifier.is_some() && b.modifier.is_some()) ||
+            (!self.country.is_some() && b.country.is_some())
+        {
             None
         } else if self.lang == b.lang && self.country.is_some() && self.country == b.country &&
                    self.modifier.is_some() &&
                    self.modifier == b.modifier
         {
             Some(LangCountryModifier)
-        } else if self.lang == b.lang && self.country == b.country {
+        } else if self.lang == b.lang && self.country.is_some() && self.country == b.country &&
+                   b.modifier.is_none()
+        {
             Some(LangCountry)
+        } else if self.lang == b.lang && self.modifier.is_some() &&
+                   self.modifier == b.modifier && b.country.is_none()
+        {
+            Some(LangModifier)
         } else if self.lang == b.lang {
             Some(Lang)
         } else {
@@ -140,21 +147,75 @@ mod test {
         use desktop::locale::*;
 
         #[test]
-        fn match_level_lang_country() {
-            let a: Locale = "en_GB.UTF-8".parse().unwrap();
-            let b: Locale = "en_GB".parse().unwrap();
+        fn match_level_lang_country_mod() {
+            let a: Locale = "en_GB@mod".parse().unwrap();
+            {
+                let b: Locale = "en_GB@mod".parse().unwrap();
 
-            let res = a.match_level(&b);
-            assert_eq!(res, Some(MatchLevel::LangCountry));
+                let res = a.match_level(&b);
+                assert_eq!(res, Some(MatchLevel::LangCountryModifier));
+            }
+            {
+                let b: Locale = "en_GB".parse().unwrap();
+
+                let res = a.match_level(&b);
+                assert_eq!(res, Some(MatchLevel::LangCountry));
+            }
+            {
+                let b: Locale = "en@mod".parse().unwrap();
+
+                let res = a.match_level(&b);
+                assert_eq!(res, Some(MatchLevel::LangModifier));
+            }
+            {
+                let b: Locale = "en".parse().unwrap();
+
+                let res = a.match_level(&b);
+                assert_eq!(res, Some(MatchLevel::Lang));
+            }
         }
 
         #[test]
-        fn match_level_lang() {
+        fn match_level_lang_country() {
             let a: Locale = "en_GB.UTF-8".parse().unwrap();
-            let b: Locale = "en".parse().unwrap();
+            {
+                let b: Locale = "en_GB".parse().unwrap();
+
+                let res = a.match_level(&b);
+                assert_eq!(res, Some(MatchLevel::LangCountry));
+            }
+            {
+                let b: Locale = "en".parse().unwrap();
+
+                let res = a.match_level(&b);
+                assert_eq!(res, Some(MatchLevel::Lang));
+            }
+        }
+
+        #[test]
+        fn match_level_lang_mod() {
+            let a: Locale = "en@mod".parse().unwrap();
+            {
+                let b: Locale = "en@mod".parse().unwrap();
+
+                let res = a.match_level(&b);
+                assert_eq!(res, Some(MatchLevel::LangModifier));
+            }
+            {
+                let b: Locale = "en".parse().unwrap();
+
+                let res = a.match_level(&b);
+                assert_eq!(res, Some(MatchLevel::Lang));
+            }
+        }
+
+        #[test]
+        fn match_level_none_mod_reverse() {
+            let a: Locale = "en".parse().unwrap();
+            let b: Locale = "en_GB@mod".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, Some(MatchLevel::Lang));
+            assert_eq!(res, None);
         }
 
         #[test]
@@ -167,9 +228,18 @@ mod test {
         #[test]
         fn spec_example() {
             let a: Locale = "sr_YU@Latn".parse().unwrap();
-            let b: Locale = "sr_YU".parse().unwrap();
-
-            assert_eq!(Some(MatchLevel::LangCountry), a.match_level(&b));
+            {
+                let b: Locale = "sr_YU".parse().unwrap();
+                assert_eq!(Some(MatchLevel::LangCountry), a.match_level(&b));
+            }
+            {
+                let b: Locale = "sr@Latn".parse().unwrap();
+                assert_eq!(Some(MatchLevel::LangModifier), a.match_level(&b));
+            }
+            {
+                let b: Locale = "sr".parse().unwrap();
+                assert_eq!(Some(MatchLevel::Lang), a.match_level(&b));
+            }
         }
     }
 }
