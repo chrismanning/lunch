@@ -41,14 +41,14 @@ mod resolve_localised_group_tests {
         let localised_group =
             hashmap!{
             "Key1".to_owned() => LocalisedValue {
-                localised_value: hashmap!{
-                    Locale::default() => "def".to_owned(),
-                    "en".parse::<Locale>().unwrap() => "en".to_owned(),
+                localised_value: vec!{
+                    (Locale::default(), "def".to_owned()),
+                    ("en".parse::<Locale>().unwrap(), "en".to_owned()),
                 }
             },
             "Key2".to_owned() => LocalisedValue {
-                localised_value: hashmap!{
-                    "C".parse::<Locale>().unwrap() => "C".to_owned(),
+                localised_value: vec!{
+                    ("C".parse::<Locale>().unwrap(), "C".to_owned()),
                 }
             }
         };
@@ -66,31 +66,43 @@ type LocalisedGroup = HashMap<String, LocalisedValue>;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 struct LocalisedValue {
-    localised_value: HashMap<Locale, String>,
+    localised_value: Vec<(Locale, String)>,
 }
 
 impl LocalisedValue {
-    fn insert(&mut self, locale: Locale, val: String) -> Option<String> {
-        self.localised_value.insert(locale, val)
+    fn insert(&mut self, locale: Locale, val: String) {
+        if let Some(idx) = self.get_idx(&locale) {
+            self.localised_value.push((locale, val));
+            self.localised_value.swap_remove(idx);
+        } else {
+            self.localised_value.push((locale, val));
+        }
     }
 
     fn get(&self, locale: &Locale) -> Option<&String> {
-        let key = self.get_key(locale);
+        let idx = self.get_idx(locale);
 
-        key.and_then(|key| self.localised_value.get(key))
+        idx.and_then(|idx| self.localised_value.get(idx)).map(
+            |&(_, ref value)| value,
+        )
     }
 
     fn remove(&mut self, locale: &Locale) -> Option<String> {
-        let key = self.get_key(locale).map(|c| c.clone());
-        key.and_then(|key| self.localised_value.remove(&key))
+        let idx = self.get_idx(locale);
+        idx.map(|idx| self.localised_value.remove(idx)).map(|(_,
+          value)| {
+            value
+        })
     }
 
-    fn get_key(&self, locale: &Locale) -> Option<&Locale> {
+    fn get_idx(&self, locale: &Locale) -> Option<usize> {
         self.localised_value
-            .keys()
-            .max_by_key(|&locale_key| locale.match_level(locale_key))
-            .and_then(|locale_key| {
-                locale.match_level(locale_key).and(Some(locale_key))
+            .iter()
+            .enumerate()
+            .map(|(idx, &(ref key, _))| (idx, key))
+            .max_by_key(|&(_, ref locale_key)| locale.match_level(&locale_key))
+            .and_then(|(idx, locale_key)| {
+                locale.match_level(locale_key).and(Some(idx))
             })
     }
 }
@@ -103,10 +115,10 @@ mod localised_value_tests {
     #[test]
     fn get_exact() {
         let localised_value = LocalisedValue {
-            localised_value: hashmap!{
-            "en".parse().unwrap() => "en".to_owned(),
-            "en_GB".parse().unwrap() => "en_GB".to_owned(),
-        },
+            localised_value: vec![
+                ("en".parse().unwrap(), "en".to_owned()),
+                ("en_GB".parse().unwrap(), "en_GB".to_owned()),
+            ],
         };
         let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
         assert_eq!(value, "en_GB");
@@ -114,11 +126,8 @@ mod localised_value_tests {
 
     #[test]
     fn get_same_lang() {
-        let localised_value = LocalisedValue {
-            localised_value: hashmap!{
-            "en".parse().unwrap() => "en".to_owned(),
-        },
-        };
+        let localised_value =
+            LocalisedValue { localised_value: vec![("en".parse().unwrap(), "en".to_owned())] };
         let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
         assert_eq!(value, "en");
     }
@@ -126,10 +135,10 @@ mod localised_value_tests {
     #[test]
     fn get_only_lang() {
         let localised_value = LocalisedValue {
-            localised_value: hashmap!{
-            "en".parse().unwrap() => "en".to_owned(),
-            "en_GB".parse().unwrap() => "en_GB".to_owned(),
-        },
+            localised_value: vec![
+                ("en".parse().unwrap(), "en".to_owned()),
+                ("en_GB".parse().unwrap(), "en_GB".to_owned()),
+            ],
         };
         let value = localised_value.get(&"en".parse().unwrap()).unwrap();
         assert_eq!(value, "en");
@@ -137,11 +146,8 @@ mod localised_value_tests {
 
     #[test]
     fn get_too_specific() {
-        let localised_value = LocalisedValue {
-            localised_value: hashmap!{
-            "en".parse().unwrap() => "en".to_owned(),
-        },
-        };
+        let localised_value =
+            LocalisedValue { localised_value: vec![("en".parse().unwrap(), "en".to_owned())] };
         let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
         assert_eq!(value, "en");
     }
@@ -149,12 +155,12 @@ mod localised_value_tests {
     #[test]
     fn get_precedence() {
         let localised_value = LocalisedValue {
-            localised_value: hashmap!{
-            Locale::default() => "def".to_owned(),
-            "sr_YU".parse().unwrap() => "sr_YU".to_owned(),
-            "sr@Latn".parse().unwrap() => "sr@Latn".to_owned(),
-            "sr".parse().unwrap() => "sr".to_owned(),
-        },
+            localised_value: vec![
+                (Locale::default(), "def".to_owned()),
+                ("sr_YU".parse().unwrap(), "sr_YU".to_owned()),
+                ("sr@Latn".parse().unwrap(), "sr@Latn".to_owned()),
+                ("sr".parse().unwrap(), "sr".to_owned()),
+            ],
         };
         let value = localised_value.get(&"sr_YU@Latn".parse().unwrap()).unwrap();
         assert_eq!(value, "sr_YU");
@@ -221,14 +227,14 @@ mod parse_group_tests {
             localised_group.unwrap(),
             hashmap!{
                 "Key1".to_owned() => LocalisedValue {
-                    localised_value: hashmap!{
-                        Locale::default() => "Value1".to_owned(),
-                        "en".parse::<Locale>().unwrap() => "Value2".to_owned(),
+                    localised_value: vec!{
+                        (Locale::default(), "Value1".to_owned()),
+                        ("en".parse::<Locale>().unwrap(), "Value2".to_owned()),
                     }
                 },
                 "Key2".to_owned() => LocalisedValue {
-                    localised_value: hashmap!{
-                        "C".parse::<Locale>().unwrap() => "Value3".to_owned(),
+                    localised_value: vec!{
+                        ("C".parse::<Locale>().unwrap(), "Value3".to_owned()),
                     }
                 }
             }
@@ -256,9 +262,9 @@ mod parse_group_tests {
             localised_group.unwrap(),
             hashmap!{
             "Key".to_owned() => LocalisedValue {
-                localised_value: hashmap!{
-                    Locale::default() => "Overwritten Value".to_owned(),
-                }
+                localised_value: vec![
+                    (Locale::default(), "Overwritten Value".to_owned()),
+                ]
             },
         }
         );
