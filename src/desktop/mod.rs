@@ -13,7 +13,7 @@ mod parse;
 mod iteratorext;
 
 use locale::Locale;
-use self::parse::parse_desktop_entry_group;
+use self::parse::parse_group;
 use errors::*;
 
 pub struct DesktopFiles {
@@ -70,6 +70,11 @@ impl DesktopFiles {
 }
 
 fn get_locale_from_env() -> Option<Locale> {
+    use std::env::*;
+//    var("LC_ALL")
+//        .or_else(|| var("LC_MESSAGES"))
+//        .or_else(|| var("LANG"))
+//        ;
     unimplemented!();
 }
 
@@ -150,10 +155,11 @@ pub fn find_all_desktop_files() -> Result<DesktopFiles> {
 }
 
 fn read_desktop_entry<R: BufRead>(input: R, locale: &Locale) -> Result<DesktopEntry> {
-    let group = parse_desktop_entry_group(
+    let group = parse_group(
         input.lines().map(
             |res| res.chain_err(|| "Error reading file"),
         ),
+        "Desktop Entry",
         locale,
     )?;
 

@@ -6,43 +6,47 @@ use desktop::iteratorext::IteratorExt;
 
 type Group = HashMap<String, String>;
 
-pub fn parse_desktop_entry_group<LineIter>(input: LineIter, locale: &Locale) -> Result<Group>
+pub fn parse_group<LineIter>(input: LineIter, group_name: &str, locale: &Locale) -> Result<Group>
 where
     LineIter: Iterator<Item = Result<String>>,
 {
-    let localised_group = parse_group(input, "Desktop Entry");
+    let localised_group = parse_localised_group(input, group_name);
     localised_group.map(|localised_group| localised_group.resolve_to_locale(locale))
 }
 
 #[cfg(test)]
-mod resolve_localised_group_tests {
-    use desktop::locale::*;
+mod parse_group_tests {
     use super::*;
+    use desktop::locale::Locale;
 
     #[test]
-    fn test() {
-        let localised_group = LocalisedGroup {
-            group: hashmap!{
-                "Key1".to_owned() => LocalisedValue {
-                    localised_value: vec!{
-                        (Locale::default(), "def".to_owned()),
-                        ("en".parse::<Locale>().unwrap(), "en".to_owned()),
-                    }
-                },
-                "Key2".to_owned() => LocalisedValue {
-                    localised_value: vec!{
-                        ("C".parse::<Locale>().unwrap(), "C".to_owned()),
-                    }
-                }
-            },
-        };
-        assert_eq!(
-            localised_group.resolve_to_locale(&"C".parse().unwrap()),
-            hashmap!{
-                "Key1".to_owned() => "def".to_owned(),
-                "Key2".to_owned() => "C".to_owned(),
-            }
-        );
+    #[should_panic]
+    fn error() {
+        let lines: Vec<Result<String>> = vec![Ok("[Group]".to_owned()), Err("error".into())];
+        let group = parse_group(lines.into_iter(), "Group", &Locale::default());
+        group.unwrap();
+    }
+
+    #[test]
+    fn parse_group_default_locale() {
+        let input = "[group header]
+        # Comment
+        Key1=Value1
+        Key1[en]=Value2
+        Key2[C]=Value3
+
+        [Another Group]
+        # Top comment
+        Key=Value
+        # Middle comment
+        Key=Overwritten Value
+        # Bottom comment
+        ";
+        let lines = input.lines().map(|line| Ok(line.to_owned()));
+        let group = parse_group(lines, "Another Group", &Locale::default());
+        assert_eq!(group.unwrap(), hashmap!{
+            "Key".to_owned() => "Overwritten Value".to_owned(),
+        });
     }
 }
 
@@ -68,6 +72,38 @@ impl LocalisedGroup {
     }
 }
 
+#[cfg(test)]
+mod localised_group_tests {
+    use desktop::locale::*;
+    use super::{LocalisedGroup, LocalisedValue};
+
+    #[test]
+    fn resolve_to_locale() {
+        let localised_group = LocalisedGroup {
+            group: hashmap!{
+                "Key1".to_owned() => LocalisedValue {
+                    localised_value: vec!{
+                        (Locale::default(), "def".to_owned()),
+                        ("en".parse::<Locale>().unwrap(), "en".to_owned()),
+                    }
+                },
+                "Key2".to_owned() => LocalisedValue {
+                    localised_value: vec!{
+                        ("C".parse::<Locale>().unwrap(), "C".to_owned()),
+                    }
+                }
+            },
+        };
+        assert_eq!(
+            localised_group.resolve_to_locale(&"C".parse().unwrap()),
+            hashmap!{
+                "Key1".to_owned() => "def".to_owned(),
+                "Key2".to_owned() => "C".to_owned(),
+            }
+        );
+    }
+}
+
 #[derive(Debug, Default, PartialEq, Eq)]
 struct LocalisedValue {
     localised_value: Vec<(Locale, String)>,
@@ -81,14 +117,6 @@ impl LocalisedValue {
         } else {
             self.localised_value.push((locale, val));
         }
-    }
-
-    fn get(&self, locale: &Locale) -> Option<&String> {
-        let idx = self.get_idx(locale);
-
-        idx.and_then(|idx| self.localised_value.get(idx)).map(
-            |&(_, ref value)| value,
-        )
     }
 
     fn remove(&mut self, locale: &Locale) -> Option<String> {
@@ -118,47 +146,47 @@ mod localised_value_tests {
 
     #[test]
     fn get_exact() {
-        let localised_value = LocalisedValue {
+        let mut localised_value = LocalisedValue {
             localised_value: vec![
                 ("en".parse().unwrap(), "en".to_owned()),
                 ("en_GB".parse().unwrap(), "en_GB".to_owned()),
             ],
         };
-        let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
+        let value = localised_value.remove(&"en_GB".parse().unwrap()).unwrap();
         assert_eq!(value, "en_GB");
     }
 
     #[test]
     fn get_same_lang() {
-        let localised_value =
+        let mut localised_value =
             LocalisedValue { localised_value: vec![("en".parse().unwrap(), "en".to_owned())] };
-        let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
+        let value = localised_value.remove(&"en_GB".parse().unwrap()).unwrap();
         assert_eq!(value, "en");
     }
 
     #[test]
     fn get_only_lang() {
-        let localised_value = LocalisedValue {
+        let mut localised_value = LocalisedValue {
             localised_value: vec![
                 ("en".parse().unwrap(), "en".to_owned()),
                 ("en_GB".parse().unwrap(), "en_GB".to_owned()),
             ],
         };
-        let value = localised_value.get(&"en".parse().unwrap()).unwrap();
+        let value = localised_value.remove(&"en".parse().unwrap()).unwrap();
         assert_eq!(value, "en");
     }
 
     #[test]
     fn get_too_specific() {
-        let localised_value =
+        let mut localised_value =
             LocalisedValue { localised_value: vec![("en".parse().unwrap(), "en".to_owned())] };
-        let value = localised_value.get(&"en_GB".parse().unwrap()).unwrap();
+        let value = localised_value.remove(&"en_GB".parse().unwrap()).unwrap();
         assert_eq!(value, "en");
     }
 
     #[test]
     fn get_precedence() {
-        let localised_value = LocalisedValue {
+        let mut localised_value = LocalisedValue {
             localised_value: vec![
                 (Locale::default(), "def".to_owned()),
                 ("sr_YU".parse().unwrap(), "sr_YU".to_owned()),
@@ -166,12 +194,12 @@ mod localised_value_tests {
                 ("sr".parse().unwrap(), "sr".to_owned()),
             ],
         };
-        let value = localised_value.get(&"sr_YU@Latn".parse().unwrap()).unwrap();
+        let value = localised_value.remove(&"sr_YU@Latn".parse().unwrap()).unwrap();
         assert_eq!(value, "sr_YU");
     }
 }
 
-fn parse_group<LineIter>(input: LineIter, group_name: &str) -> Result<LocalisedGroup>
+fn parse_localised_group<LineIter>(input: LineIter, group_name: &str) -> Result<LocalisedGroup>
 where
     LineIter: Iterator<Item = Result<String>>,
 {
@@ -207,14 +235,14 @@ where
 }
 
 #[cfg(test)]
-mod parse_group_tests {
+mod parse_localised_group_tests {
     use super::*;
 
     #[test]
     fn header_only() {
         let input = "[group header]";
         let lines = input.lines().map(|line| Ok(line.to_owned()));
-        let localised_group = parse_group(lines, "group header");
+        let localised_group = parse_localised_group(lines, "group header");
         assert_eq!(localised_group.unwrap(), LocalisedGroup::default());
     }
 
@@ -225,7 +253,7 @@ mod parse_group_tests {
         Key1=Value1
         Key1[en]=Value2
         Key2[C]=Value3";
-        let localised_group = parse_group(
+        let localised_group = parse_localised_group(
             input.lines().map(|line| Ok(line.to_owned())),
             "group header",
         );
@@ -263,7 +291,7 @@ mod parse_group_tests {
         # Bottom comment
         ";
         let lines = input.lines().map(|line| Ok(line.to_owned()));
-        let localised_group = parse_group(lines, "Another Group");
+        let localised_group = parse_localised_group(lines, "Another Group");
         assert_eq!(
             localised_group.unwrap().group,
             hashmap! {
