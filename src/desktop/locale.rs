@@ -1,6 +1,6 @@
 use std::str::FromStr;
 use desktop::StdResult;
-use desktop::errors::{Error, ErrorKind};
+use desktop::errors::*;
 
 #[derive(Debug, Default, Eq, PartialEq, Hash, Clone)]
 pub struct Locale {
@@ -76,6 +76,22 @@ impl Locale {
             None
         }
     }
+}
+
+pub fn get_locale() -> Result<Locale> {
+    use std::env::var;
+    for var_name in ["LC_ALL", "LC_MESSAGES", "LANG"].iter() {
+        match var(var_name) {
+            Ok(locale) => {
+                debug!("Found locale '{}' in ${}", locale, var_name);
+                return locale.parse();
+            },
+            Err(err) => {
+                debug!("Error reading env var ${}: {}", var_name, err);
+            }
+        }
+    }
+    return Ok(Locale::default());
 }
 
 #[cfg(test)]

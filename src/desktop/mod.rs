@@ -25,8 +25,8 @@ impl DesktopFiles {
         DesktopFiles { desktop_files: desktop_files }
     }
 
-    pub fn find_exact_match(&self, name: &str) -> Result<DesktopEntry> {
-        self.parse_files()
+    pub fn find_exact_match(&self, name: &str, locale: &Locale) -> Result<DesktopEntry> {
+        self.parse_files(locale)
             .into_iter()
             .filter(|entry| entry.entry_type == "Application")
             .filter(|entry| !entry.no_display)
@@ -35,7 +35,7 @@ impl DesktopFiles {
             .ok_or_else(|| ErrorKind::NoMatchFound.into())
     }
 
-    pub fn parse_files(&self) -> Vec<DesktopEntry> {
+    pub fn parse_files(&self, locale: &Locale) -> Vec<DesktopEntry> {
         self.desktop_files
             .iter()
             .map(|buf| File::open(buf.as_path()))
@@ -49,12 +49,7 @@ impl DesktopFiles {
                     None
                 }
             })
-            .map(|file| {
-                read_desktop_entry(
-                    BufReader::new(file),
-                    &get_locale_from_env().unwrap_or_default(),
-                )
-            })
+            .map(|file| read_desktop_entry(BufReader::new(file), locale))
             .filter_map(|entry| match entry {
                 Ok(e) => {
                     debug!("Found desktop entry file {:?}", e);
@@ -67,15 +62,6 @@ impl DesktopFiles {
             })
             .collect()
     }
-}
-
-fn get_locale_from_env() -> Option<Locale> {
-    use std::env::*;
-//    var("LC_ALL")
-//        .or_else(|| var("LC_MESSAGES"))
-//        .or_else(|| var("LANG"))
-//        ;
-    unimplemented!();
 }
 
 #[derive(Debug, Default, Builder)]
