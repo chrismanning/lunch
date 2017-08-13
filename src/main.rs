@@ -61,7 +61,7 @@ fn run() -> Result<()> {
         .chain_err(|| format!("Error finding match for '{}'", term))
         .map(|entry| {
             debug!("Found match: {:?}", entry);
-            let err = entry.launch();
+            let err = entry.exec(::std::iter::empty::<String>());
             error!("Error launching entry named '{}': {}", entry.name, err);
             return Err(err);
         })?;

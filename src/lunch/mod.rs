@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::os::unix::process::CommandExt;
 use std::io::{BufRead, BufReader};
+use std::ffi::OsStr;
 
 use xdg::BaseDirectories as XdgDirs;
 
@@ -15,6 +16,13 @@ mod iteratorext;
 use locale::Locale;
 use self::parse::parse_group;
 use errors::*;
+
+pub trait Exec {
+    fn exec<I, S>(&self, args: I) -> Error
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>;
+}
 
 pub struct DesktopFiles {
     desktop_files: Vec<PathBuf>,
@@ -96,8 +104,10 @@ pub struct DesktopEntry {
     pub categories: Vec<String>,
 }
 
-impl DesktopEntry {
-    pub fn launch(&self) -> Error {
+impl Exec for DesktopEntry {
+    fn exec<I, S>(&self, args: I) -> Error where
+        I: IntoIterator<Item=S>,
+        S: AsRef<OsStr> {
         info!("Launching '{}'...", self.name);
         if let Some(ref path) = self.try_exec {
             let path = Path::new(path);
@@ -110,7 +120,7 @@ impl DesktopEntry {
         } else {
             return ErrorKind::MissingRequiredEntryKey.into();
         };
-        // TODO launch() args
+        cmd.args(args);
 
         if let Some(ref path) = self.path {
             cmd.current_dir(path);
