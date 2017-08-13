@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use locale::Locale;
+use locale::Locale as Locale;
 use errors::*;
-use desktop::iteratorext::IteratorExt;
+use lunch::iteratorext::IteratorExt;
 
 type Group = HashMap<String, String>;
 
@@ -17,7 +17,6 @@ where
 #[cfg(test)]
 mod parse_group_tests {
     use super::*;
-    use desktop::locale::Locale;
 
     #[test]
     #[should_panic]
@@ -74,8 +73,7 @@ impl LocalisedGroup {
 
 #[cfg(test)]
 mod localised_group_tests {
-    use desktop::locale::*;
-    use super::{LocalisedGroup, LocalisedValue};
+    use super::*;
 
     #[test]
     fn resolve_to_locale() {
@@ -141,8 +139,7 @@ impl LocalisedValue {
 
 #[cfg(test)]
 mod localised_value_tests {
-    use desktop::locale::Locale;
-    use super::LocalisedValue;
+    use super::*;
 
     #[test]
     fn get_exact() {
@@ -319,8 +316,7 @@ fn parse_key(line: &str) -> (&str, Locale) {
 
 #[cfg(test)]
 mod parse_key_tests {
-    use super::parse_key;
-    use desktop::locale::Locale;
+    use super::*;
 
     #[test]
     fn no_locale() {

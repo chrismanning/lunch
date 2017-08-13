@@ -12,11 +12,11 @@ extern crate maplit;
 
 use clap::App;
 
-mod desktop;
+mod lunch;
 
-use desktop::*;
-use desktop::errors::*;
-use desktop::locale::get_locale;
+use lunch::*;
+use lunch::errors::*;
+use lunch::locale::get_locale;
 
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
