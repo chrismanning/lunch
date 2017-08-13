@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use locale::Locale as Locale;
+use lunch::freedesktop::locale::Locale as Locale;
 use errors::*;
 use lunch::iteratorext::IteratorExt;
 

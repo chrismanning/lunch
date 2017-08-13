@@ -16,7 +16,7 @@ mod lunch;
 
 use lunch::*;
 use lunch::errors::*;
-use lunch::locale::get_locale;
+use lunch::freedesktop::locale::get_locale;
 
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -56,7 +56,7 @@ fn run() -> Result<()> {
     //    arg_matches.
 
     let term = "";
-    let apps = find_all_desktop_files().unwrap();
+    let apps = lunch::freedesktop::find_all_desktop_files()?;
     return apps.find_exact_match(term, &locale)
         .chain_err(|| format!("Error finding match for '{}'", term))
         .map(|entry| {
