@@ -1,3 +1,6 @@
+#![feature(try_from)]
+#![feature(slice_patterns)]
+
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
@@ -10,13 +13,14 @@ extern crate derive_builder;
 #[macro_use]
 extern crate maplit;
 
+use std::convert::TryInto;
+
 use clap::App;
 
 mod lunch;
 
 use lunch::*;
 use lunch::errors::*;
-use lunch::freedesktop::locale::get_locale;
 
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -46,8 +50,10 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    env_logger::init().chain_err(|| "Error initialising logging")?;
-    let locale = get_locale()?;
+    env_logger::init().chain_err(
+        || "Error initialising logging",
+    )?;
+    let locale = lunch::freedesktop::locale::get_locale()?;
     let arg_matches = App::new(APP_NAME)
         .version(VERSION)
         .about(DESCRIPTION)
@@ -61,8 +67,19 @@ fn run() -> Result<()> {
         .chain_err(|| format!("Error finding match for '{}'", term))
         .map(|entry| {
             debug!("Found match: {:?}", entry);
-            let err = entry.exec(::std::iter::empty::<String>());
-            error!("Error launching entry named '{}': {}", entry.name, err);
-            return Err(err);
+            use lunch::freedesktop::entry::*;
+            let name = entry.name.clone();
+            let exec: Result<ApplicationEntry> = entry.try_into();
+            match exec {
+                Err(err) => {
+                    error!("Error launching entry named '{}': {}", name, err);
+                    return Err(err);
+                }
+                Ok(exec) => {
+                    let err = exec.launch(vec![]);
+                    error!("Error launching entry named '{}': {}", name, err);
+                    return Err(err);
+                }
+            }
         })?;
 }

@@ -6,7 +6,7 @@ use xdg::BaseDirectories as XdgDirs;
 
 pub mod locale;
 mod parse;
-mod entry;
+pub mod entry;
 
 use lunch::errors::*;
 
@@ -29,7 +29,7 @@ impl DesktopFiles {
             .filter(|entry| !entry.no_display)
             .skip_while(|entry| entry.name != name)
             .find(|entry| !entry.hidden)
-            .ok_or_else(|| ErrorKind::NoMatchFound.into())
+            .ok_or_else(|| ErrorKind::NoMatchFound(name.to_owned()).into())
     }
 
     pub fn parse_files(&self, locale: &Locale) -> Vec<DesktopEntry> {
@@ -46,7 +46,9 @@ impl DesktopFiles {
                     None
                 }
             })
-            .map(|file| DesktopEntry::read_desktop_entry(BufReader::new(file), locale))
+            .map(|file| {
+                DesktopEntry::read_desktop_entry(BufReader::new(file), locale)
+            })
             .filter_map(|entry| match entry {
                 Ok(e) => {
                     debug!("Found desktop entry file {:?}", e);

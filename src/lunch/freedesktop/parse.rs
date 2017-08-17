@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use lunch::freedesktop::locale::Locale as Locale;
+use lunch::freedesktop::locale::Locale;
 use errors::*;
 use lunch::iteratorext::IteratorExt;
 
@@ -43,9 +43,12 @@ mod parse_group_tests {
         ";
         let lines = input.lines().map(|line| Ok(line.to_owned()));
         let group = parse_group(lines, "Another Group", &Locale::default());
-        assert_eq!(group.unwrap(), hashmap!{
+        assert_eq!(
+            group.unwrap(),
+            hashmap!{
             "Key".to_owned() => "Overwritten Value".to_owned(),
-        });
+        }
+        );
     }
 }
 
@@ -191,7 +194,9 @@ mod localised_value_tests {
                 ("sr".parse().unwrap(), "sr".to_owned()),
             ],
         };
-        let value = localised_value.remove(&"sr_YU@Latn".parse().unwrap()).unwrap();
+        let value = localised_value
+            .remove(&"sr_YU@Latn".parse().unwrap())
+            .unwrap();
         assert_eq!(value, "sr_YU");
     }
 }
@@ -214,7 +219,7 @@ where
         .filter_result(|line| !line.is_empty() && !line.starts_with('#'))
         .take_while_result(|line| !line.starts_with('['))
         .filter_map(|line| match line {
-            Ok(line) => split_to_owned('=', &line).map(Ok),
+            Ok(line) => split_first_to_owned('=', &line).map(Ok),
             Err(err) => Some(Err(err)),
         })
         .collect::<Result<_>>()?;
@@ -340,14 +345,14 @@ mod parse_key_tests {
     }
 }
 
-fn split(delim: char, s: &str) -> Option<(&str, &str)> {
+fn split_first(delim: char, s: &str) -> Option<(&str, &str)> {
     s.find(delim).map(|i| s.split_at(i)).map(|(name, value)| {
         (name.trim(), value[1..value.len()].trim())
     })
 }
 
-fn split_to_owned(delim: char, s: &str) -> Option<(String, String)> {
-    if let Some((left, right)) = split(delim, s) {
+fn split_first_to_owned(delim: char, s: &str) -> Option<(String, String)> {
+    if let Some((left, right)) = split_first(delim, s) {
         Some((left.to_owned(), right.to_owned()))
     } else {
         None
@@ -356,15 +361,15 @@ fn split_to_owned(delim: char, s: &str) -> Option<(String, String)> {
 
 #[cfg(test)]
 mod split_tests {
-    use super::split;
+    use super::split_first;
 
     #[test]
     fn split_match() {
-        assert_eq!(split('b', "abc"), Some(("a", "c")))
+        assert_eq!(split_first('b', "abc"), Some(("a", "c")))
     }
 
     #[test]
     fn no_match() {
-        assert_eq!(split('-', "abc"), None)
+        assert_eq!(split_first('-', "abc"), None)
     }
 }

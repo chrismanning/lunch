@@ -10,3 +10,7 @@ error-chain = "0.10.0"
 log = "0.3.8"
 xdg = "2.1.0"
 maplit = "0.1.4"
+
+[features]
+default = ["freedesktop"]
+freedesktop = []

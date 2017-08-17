@@ -1,6 +1,7 @@
 use std::ffi::OsStr;
 
 pub mod errors;
+pub mod env;
 mod iteratorext;
 pub mod freedesktop;
 
@@ -8,9 +9,19 @@ use errors::*;
 
 pub use std::result::Result as StdResult;
 
-pub trait Exec {
-    fn exec<I, S>(&self, args: I) -> Error
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>;
+enum Io {
+    Suppress,
+    Inherit,
+}
+
+pub struct Options {
+    io: Io,
+}
+
+pub trait Application {}
+
+pub trait ApplicationIndex {}
+
+pub trait Launch: Application + ApplicationIndex {
+    fn launch(&self, args: Vec<String>) -> Error;
 }
