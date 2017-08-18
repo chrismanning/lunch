@@ -40,6 +40,11 @@ error_chain! {
             display("")
         }
 
+        InvalidCommandLine(cmd_line: String) {
+            description("Unable to parse command line")
+            display("Exec string '{}' not valid", cmd_line)
+        }
+
         UnknownError
     }
     foreign_links {

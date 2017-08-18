@@ -1,5 +1,6 @@
 #![feature(try_from)]
 #![feature(slice_patterns)]
+#![feature(advanced_slice_patterns)]
 
 #[macro_use]
 extern crate error_chain;
@@ -12,6 +13,9 @@ extern crate xdg;
 extern crate derive_builder;
 #[macro_use]
 extern crate maplit;
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
 
 use std::convert::TryInto;
 
