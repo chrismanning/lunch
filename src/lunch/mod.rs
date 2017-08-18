@@ -5,7 +5,7 @@ pub mod env;
 mod iteratorext;
 pub mod freedesktop;
 
-use errors::*;
+use self::errors::*;
 
 pub use std::result::Result as StdResult;
 

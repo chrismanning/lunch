@@ -1,6 +1,6 @@
 #![feature(try_from)]
-#![feature(slice_patterns)]
-#![feature(advanced_slice_patterns)]
+
+extern crate lunch;
 
 #[macro_use]
 extern crate error_chain;
@@ -8,20 +8,10 @@ extern crate error_chain;
 extern crate log;
 extern crate env_logger;
 extern crate clap;
-extern crate xdg;
-#[macro_use]
-extern crate derive_builder;
-#[macro_use]
-extern crate maplit;
-#[macro_use]
-extern crate lazy_static;
-extern crate regex;
 
 use std::convert::TryInto;
 
 use clap::App;
-
-mod lunch;
 
 use lunch::*;
 use lunch::errors::*;

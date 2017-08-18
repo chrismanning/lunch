@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use lunch::freedesktop::locale::Locale;
-use errors::*;
+use lunch::errors::*;
 use lunch::iteratorext::IteratorExt;
+use super::locale::Locale;
 
 type Group = HashMap<String, String>;
 
