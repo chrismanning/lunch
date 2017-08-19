@@ -17,7 +17,5 @@ extern crate maplit;
 extern crate lazy_static;
 extern crate regex;
 
-use std::ffi::OsStr;
-
 mod lunch;
 pub use lunch::*;

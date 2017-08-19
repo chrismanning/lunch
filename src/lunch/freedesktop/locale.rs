@@ -51,6 +51,22 @@ pub enum MatchLevel {
 }
 
 impl Locale {
+    pub fn from_env() -> Result<Locale> {
+        use std::env::var;
+        for var_name in &["LC_ALL", "LC_MESSAGES", "LANG"] {
+            match var(var_name) {
+                Ok(locale) => {
+                    debug!("Found locale '{}' in ${}", locale, var_name);
+                    return locale.parse();
+                }
+                Err(err) => {
+                    debug!("Error reading env var ${}: {}", var_name, err);
+                }
+            }
+        }
+        Ok(Locale::default())
+    }
+
     pub fn match_level(&self, b: &Self) -> Option<MatchLevel> {
         use self::MatchLevel::*;
         if (!self.modifier.is_some() && b.modifier.is_some()) ||
@@ -76,22 +92,6 @@ impl Locale {
             None
         }
     }
-}
-
-pub fn get_locale() -> Result<Locale> {
-    use std::env::var;
-    for var_name in ["LC_ALL", "LC_MESSAGES", "LANG"].iter() {
-        match var(var_name) {
-            Ok(locale) => {
-                debug!("Found locale '{}' in ${}", locale, var_name);
-                return locale.parse();
-            }
-            Err(err) => {
-                debug!("Error reading env var ${}: {}", var_name, err);
-            }
-        }
-    }
-    return Ok(Locale::default());
 }
 
 #[cfg(test)]

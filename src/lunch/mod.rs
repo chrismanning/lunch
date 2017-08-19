@@ -1,5 +1,3 @@
-use std::ffi::OsStr;
-
 pub mod errors;
 pub mod env;
 mod iteratorext;

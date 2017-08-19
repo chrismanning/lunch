@@ -456,7 +456,7 @@ impl Launch for ApplicationEntry {
                     ::std::process::exit(0);
                 }
                 Err(err) => {
-                    return err.into();
+                    err.into()
                 }
             }
         } else {
