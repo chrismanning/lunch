@@ -13,9 +13,6 @@ extern crate xdg;
 extern crate derive_builder;
 #[macro_use]
 extern crate maplit;
-#[macro_use]
-extern crate lazy_static;
-extern crate regex;
 
 mod lunch;
 pub use lunch::*;

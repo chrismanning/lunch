@@ -5,7 +5,6 @@ use std::convert::{From, TryFrom};
 use std::str::FromStr;
 use std::fmt::{Display, Formatter};
 use std::fmt::Result as FmtResult;
-use regex::Regex;
 
 use lunch::errors::*;
 use lunch::*;
@@ -115,11 +114,9 @@ impl FromStr for Exec {
     type Err = Error;
 
     fn from_str(s: &str) -> StdResult<Self, Self::Err> {
-        lazy_static! {
-            static ref PAT: Regex = Regex::new(r"(?:[^\\])\s+").unwrap();
-        }
-        let tokens: Vec<_> = PAT.split(s).collect();
-        if let [cmd, ref args..] = tokens[..] {
+        let tokens: Vec<_> = split_command_line(s)?;
+
+        if let [ref cmd, ref args..] = tokens[..] {
             Ok(Exec {
                 exec: cmd.to_owned(),
                 args: args.iter()
@@ -132,18 +129,42 @@ impl FromStr for Exec {
     }
 }
 
-fn split_command_line(cmd_line: &str) -> Vec<&str> {
-    // TODO split command line
+fn split_command_line(cmd_line: &str) -> Result<Vec<String>> {
     let mut slices = Vec::new();
-    for c in cmd_line.chars() {
+    let mut chars = cmd_line.chars();
+    let mut token: String = String::new();
+    let mut quote = false;
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => {
+                if let Some(c) = chars.next() {
+                    match c {
+                        'n' => token.push('\n'),
+                        't' => token.push('\t'),
+                        _ => token.push(c),
+                    }
+                }
+            }
+            ' ' => {
+                if quote {
+                    token.push(c);
+                } else {
+                    slices.push(token.clone());
+                    token.clear();
+                }
+            }
+            '"' => {
+                quote = !quote;
+            }
+            _ => {
+                token.push(c);
+            }
+        }
     }
-    //    cmd_line.
-    slices
-}
-
-enum Token {
-    Quote,
-    Escape,
+    if !token.is_empty() {
+        slices.push(token);
+    }
+    Ok(slices)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -265,13 +286,29 @@ mod exec_tests {
     #[test]
     fn exec_parse_space() {
         let exec: Exec = r"/opt/Echo\ 2/echo -n %f -e".parse().unwrap();
-        assert_eq!(&exec.exec, r"/opt/Echo\ 2/echo");
+        assert_eq!(&exec.exec, r"/opt/Echo 2/echo");
         assert_eq!(
             exec.args,
             vec![
                 Arg::StaticArg("-n".to_owned()),
                 Arg::FieldCode,
                 Arg::StaticArg("-e".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn exec_quoted_arg() {
+        let exec: Exec = r##"/opt/Echo\ 2/echo -n %f -e "arg with spaces" -v"##.parse().unwrap();
+        assert_eq!(&exec.exec, "/opt/Echo 2/echo");
+        assert_eq!(
+            exec.args,
+            vec![
+                Arg::StaticArg("-n".to_owned()),
+                Arg::FieldCode,
+                Arg::StaticArg("-e".to_owned()),
+                Arg::StaticArg("arg with spaces".to_owned()),
+                Arg::StaticArg("-v".to_owned()),
             ]
         );
     }
