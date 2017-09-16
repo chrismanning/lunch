@@ -10,7 +10,7 @@ use lunch::errors::*;
 use lunch::*;
 
 use super::locale::Locale;
-use super::parse::parse_group;
+use super::parse::parse_groups;
 
 #[derive(Debug, Default, Builder)]
 pub struct DesktopEntry {
@@ -48,13 +48,14 @@ pub struct DesktopEntry {
 
 impl DesktopEntry {
     pub fn read_desktop_entry<R: BufRead>(input: R, locale: &Locale) -> Result<DesktopEntry> {
-        let group = parse_group(
+        let mut groups = parse_groups(
             input.lines().map(
                 |res| res.chain_err(|| "Error reading file"),
             ),
-            "Desktop Entry",
+            |header| header.starts_with("Desktop "),
             locale,
         )?;
+        let group = groups.remove("Desktop Entry").ok_or(ErrorKind::ApplicationNotFound)?;
 
         let mut builder = DesktopEntryBuilder::default();
         for (key, value) in group {

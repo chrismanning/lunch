@@ -5,29 +5,38 @@ use lunch::iteratorext::IteratorExt;
 use super::locale::Locale;
 
 type Group = HashMap<String, String>;
+type Groups = HashMap<String, Group>;
 
-pub fn parse_group<LineIter>(input: LineIter, group_name: &str, locale: &Locale) -> Result<Group>
+pub fn parse_groups<LineIter, HeaderPred>(lines: LineIter, header_pred: HeaderPred, locale: &Locale) -> Result<Groups>
 where
     LineIter: Iterator<Item = Result<String>>,
+    HeaderPred: Fn(&String) -> bool,
 {
-    let localised_group = parse_localised_group(input, group_name);
-    localised_group.map(|localised_group| localised_group.resolve_to_locale(locale))
+    let mut groups = Groups::new();
+    let mut lines = lines.peekable();
+    while lines.peek().is_some() {
+        if let Some((header, localised_group)) = parse_localised_group(&mut lines, |header|(&header_pred)(header))? {
+            let group = localised_group.resolve_to_locale(locale);
+            groups.insert(header, group);
+        }
+    }
+    Ok(groups)
 }
 
 #[cfg(test)]
-mod parse_group_tests {
+mod parse_groups_tests {
     use super::*;
 
     #[test]
     #[should_panic]
     fn error() {
         let lines: Vec<Result<String>> = vec![Ok("[Group]".to_owned()), Err("error".into())];
-        let group = parse_group(lines.into_iter(), "Group", &Locale::default());
+        let group = parse_groups(lines.into_iter(), |header| header =="Group", &Locale::default());
         group.unwrap();
     }
 
     #[test]
-    fn parse_group_default_locale() {
+    fn parse_groups_default_locale() {
         let input = "[group header]
         # Comment
         Key1=Value1
@@ -42,11 +51,13 @@ mod parse_group_tests {
         # Bottom comment
         ";
         let lines = input.lines().map(|line| Ok(line.to_owned()));
-        let group = parse_group(lines, "Another Group", &Locale::default());
+        let groups = parse_groups(lines, |header| header =="Another Group", &Locale::default());
         assert_eq!(
-            group.unwrap(),
+            groups.unwrap(),
             hashmap!{
-            "Key".to_owned() => "Overwritten Value".to_owned(),
+            "Another Group".to_owned() => hashmap!{
+                "Key".to_owned() => "Overwritten Value".to_owned(),
+            }
         }
         );
     }
@@ -201,21 +212,32 @@ mod localised_value_tests {
     }
 }
 
-fn parse_localised_group<LineIter>(input: LineIter, group_name: &str) -> Result<LocalisedGroup>
+fn parse_localised_group<LineIter, HeaderPred>(lines: &mut LineIter, header_pred: HeaderPred) -> Result<Option<(String, LocalisedGroup)>>
 where
     LineIter: Iterator<Item = Result<String>>,
+    HeaderPred: Fn(&String) -> bool,
 {
-    let header_pred = {
-        let mut header = "[".to_owned();
-        header.push_str(group_name.trim());
-        header.push(']');
-
-        move |line: &String| !line.trim().starts_with(&header)
+    let header_pred = move |line: &String| {
+        !parse_header(line).as_ref().map(&header_pred).unwrap_or(false)
     };
-    let lines: Vec<(String, String)> = input
+    let mut lines = lines
         .map_result(|line| line.trim().to_owned())
-        .skip_while_result(header_pred)
-        .skip(1)
+        .skip_while_result(header_pred);
+    let header = match lines.next() {
+        Some(header) => match parse_header(&header?) {
+            Some(header) => {
+                header
+            },
+            None => {
+                return Ok(None);
+            }
+        },
+        None => {
+            return Ok(None);
+        }
+    };
+
+    let lines: Vec<(String, String)> = lines
         .filter_result(|line| !line.is_empty() && !line.starts_with('#'))
         .take_while_result(|line| !line.starts_with('['))
         .filter_map(|line| match line {
@@ -233,7 +255,7 @@ where
         );
         localised_value.insert(locale, value);
     }
-    Ok(localised_group)
+    Ok(Some((header, localised_group)))
 }
 
 #[cfg(test)]
@@ -243,9 +265,9 @@ mod parse_localised_group_tests {
     #[test]
     fn header_only() {
         let input = "[group header]";
-        let lines = input.lines().map(|line| Ok(line.to_owned()));
-        let localised_group = parse_localised_group(lines, "group header");
-        assert_eq!(localised_group.unwrap(), LocalisedGroup::default());
+        let mut lines = input.lines().map(|line| Ok(line.to_owned()));
+        let localised_group = parse_localised_group(&mut lines, |header| header == "group header");
+        assert_eq!(localised_group.unwrap().unwrap().1, LocalisedGroup::default());
     }
 
     #[test]
@@ -256,11 +278,11 @@ mod parse_localised_group_tests {
         Key1[en]=Value2
         Key2[C]=Value3";
         let localised_group = parse_localised_group(
-            input.lines().map(|line| Ok(line.to_owned())),
-            "group header",
+            &mut input.lines().map(|line| Ok(line.to_owned())),
+            |header| header == "group header",
         );
         assert_eq!(
-            localised_group.unwrap().group,
+            localised_group.unwrap().unwrap().1.group,
             hashmap! {
                 "Key1".to_owned() => LocalisedValue {
                     localised_value: vec!{
@@ -292,10 +314,10 @@ mod parse_localised_group_tests {
         Key=Overwritten Value
         # Bottom comment
         ";
-        let lines = input.lines().map(|line| Ok(line.to_owned()));
-        let localised_group = parse_localised_group(lines, "Another Group");
+        let mut lines = input.lines().map(|line| Ok(line.to_owned()));
+        let localised_group = parse_localised_group(&mut lines, |header| header == "Another Group");
         assert_eq!(
-            localised_group.unwrap().group,
+            localised_group.unwrap().unwrap().1.group,
             hashmap! {
                 "Key".to_owned() => LocalisedValue {
                     localised_value: vec![
@@ -304,6 +326,30 @@ mod parse_localised_group_tests {
                 },
             }
         );
+    }
+}
+
+fn parse_header(line: &String) -> Option<String> {
+    let mut chars = line.trim().chars();
+    if chars.next() == Some('[') {
+        Some(chars.take_while(|c| *c != ']').collect())
+    } else {
+        None
+    }
+}
+
+#[cfg(test)]
+mod parse_header_tests {
+    use super::*;
+
+    #[test]
+    fn header() {
+        assert_eq!(parse_header(&"[group header]".to_owned()), Some("group header".to_owned()));
+    }
+
+    #[test]
+    fn not_header() {
+        assert_eq!(parse_header(&"group header]".to_owned()), None);
     }
 }
 
