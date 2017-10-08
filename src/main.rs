@@ -33,8 +33,6 @@ fn main() {
             writeln!(stderr, "caused by: {}", e).expect(errmsg);
         }
 
-        // The backtrace is not always generated. Try to run this example
-        // with `RUST_BACKTRACE=1`.
         if let Some(backtrace) = e.backtrace() {
             writeln!(stderr, "backtrace: {:?}", backtrace).expect(errmsg);
         }
@@ -56,24 +54,25 @@ fn run() -> Result<()> {
     //    arg_matches.
 
     let term = "";
-    let apps = lunch::freedesktop::find_all_desktop_files()?;
-    apps.find_exact_match(term, &locale)
-        .chain_err(|| format!("Error finding match for '{}'", term))
-        .map(|entry| {
-            debug!("Found match: {:?}", entry);
-            use lunch::freedesktop::entry::*;
-            let name = entry.name.clone();
-            let exec: Result<ApplicationEntry> = entry.try_into();
-            match exec {
-                Err(err) => {
-                    error!("Error launching entry named '{}': {}", name, err);
-                    Err(err)
-                }
-                Ok(exec) => {
-                    let err = exec.launch(vec![]);
-                    error!("Error launching entry named '{}': {}", name, err);
-                    Err(err)
-                }
-            }
-        })?
+//    let apps = lunch::freedesktop::find_all_desktop_files()?;
+//    apps.find_exact_match(term, &locale)
+//        .chain_err(|| format!("Error finding match for '{}'", term))
+//        .map(|entry| {
+//            debug!("Found match: {:?}", entry);
+//            use lunch::freedesktop::entry::*;
+//            let name = entry.name.clone();
+//            let exec: Result<ApplicationEntry> = entry.try_into();
+//            match exec {
+//                Err(err) => {
+//                    error!("Error launching entry named '{}': {}", name, err);
+//                    Err(err)
+//                }
+//                Ok(exec) => {
+//                    let err = exec.launch(vec![]);
+//                    error!("Error launching entry named '{}': {}", name, err);
+//                    Err(err)
+//                }
+//            }
+//        })?
+    unimplemented!()
 }

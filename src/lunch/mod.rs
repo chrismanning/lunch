@@ -16,10 +16,6 @@ pub struct Options {
     io: Io,
 }
 
-pub trait Application {}
-
-pub trait ApplicationIndex {}
-
-pub trait Launch: Application + ApplicationIndex {
+pub trait Launch {
     fn launch(&self, args: Vec<String>) -> Error;
 }

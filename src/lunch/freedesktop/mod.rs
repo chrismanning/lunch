@@ -6,7 +6,10 @@ use xdg::BaseDirectories as XdgDirs;
 
 pub mod locale;
 mod parse;
+pub mod exec;
+mod application;
 pub mod entry;
+pub mod desktopfile;
 
 use lunch::errors::*;
 
@@ -33,33 +36,34 @@ impl DesktopFiles {
     }
 
     pub fn parse_files(&self, locale: &Locale) -> Vec<DesktopEntry> {
-        self.desktop_files
-            .iter()
-            .map(|buf| File::open(buf.as_path()))
-            .filter_map(|file| match file {
-                Ok(e) => {
-                    debug!("Opened file {:?}", e);
-                    Some(e)
-                }
-                Err(err) => {
-                    warn!("Error opening file: {}", err);
-                    None
-                }
-            })
-            .map(|file| {
-                DesktopEntry::read_desktop_entry(BufReader::new(file), locale)
-            })
-            .filter_map(|entry| match entry {
-                Ok(e) => {
-                    debug!("Found desktop entry file {:?}", e);
-                    Some(e)
-                }
-                Err(err) => {
-                    warn!("Error reading desktop file: {}", err);
-                    None
-                }
-            })
-            .collect()
+//        self.desktop_files
+//            .iter()
+//            .map(|buf| File::open(buf.as_path()))
+//            .filter_map(|file| match file {
+//                Ok(e) => {
+//                    debug!("Opened file {:?}", e);
+//                    Some(e)
+//                }
+//                Err(err) => {
+//                    warn!("Error opening file: {}", err);
+//                    None
+//                }
+//            })
+//            .map(|file| {
+//                DesktopEntry::read_desktop_entry(BufReader::new(file), locale)
+//            })
+//            .filter_map(|entry| match entry {
+//                Ok(e) => {
+//                    debug!("Found desktop entry file {:?}", e);
+//                    Some(e)
+//                }
+//                Err(err) => {
+//                    warn!("Error reading desktop file: {}", err);
+//                    None
+//                }
+//            })
+//            .collect()
+        unimplemented!()
     }
 }
 
