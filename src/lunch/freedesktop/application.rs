@@ -37,7 +37,9 @@ impl Application {
         let mut cmd = Command::new(cmd_line.cmd);
         cmd.args(cmd_line.args);
         if let Some(ref path) = self.path {
-            cmd.current_dir(path);
+            if path.exists() {
+                cmd.current_dir(path);
+            }
         }
         match opt.io {
             Io::Suppress => {
