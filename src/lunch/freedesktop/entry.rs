@@ -1,8 +1,5 @@
 use std::path::PathBuf;
 
-use lunch::errors::*;
-use lunch::*;
-
 #[derive(Debug, Default, Builder)]
 pub struct DesktopEntry {
     #[builder(setter(into))]
@@ -39,10 +36,12 @@ pub struct DesktopEntry {
     pub keywords: Vec<String>,
 }
 
+#[derive(Debug, Default, Builder)]
 pub struct DesktopAction {
+    #[builder(setter(into))]
     name: String,
+    #[builder(setter(into))]
     exec: String,
+    #[builder(setter(into), default = "None")]
     icon: Option<String>,
-    // TODO scan for (DesktopEntry, Vec<DesktopAction>)
-    // TODO convert to Application (move ApplicationEntry impl to Application)
 }

@@ -1,10 +1,9 @@
 use std::path::{Path, PathBuf};
-use std::process::{Command, Child, Stdio};
 use std::convert::{From, TryFrom};
 use std::fmt::{Result as FmtResult, Display, Formatter};
 
-use freedesktop::exec::{Exec, CmdLine, FieldCode};
-use lunch::{Options, Io, Launch};
+use lunch::exec::{Exec, FieldCode};
+use lunch::{Options, Io, Launch, Search};
 use lunch::errors::*;
 
 pub struct Application {
@@ -31,30 +30,6 @@ impl Application {
             true
         }
     }
-
-    fn spawn<'a>(&self, cmd_line: CmdLine<'a>, opt: &Options) -> Result<Child> {
-        debug!("spawning {:?}", cmd_line);
-        let mut cmd = Command::new(cmd_line.cmd);
-        cmd.args(cmd_line.args);
-        if let Some(ref path) = self.path {
-            if path.exists() {
-                cmd.current_dir(path);
-            }
-        }
-        match opt.io {
-            Io::Suppress => {
-                cmd.stdout(Stdio::null()).stderr(Stdio::null()).stdin(
-                    Stdio::null(),
-                );
-            }
-            Io::Inherit => {
-                cmd.stdout(Stdio::inherit())
-                    .stderr(Stdio::inherit())
-                    .stdin(Stdio::inherit());
-            }
-        }
-        cmd.spawn().chain_err(|| "Error spawning process")
-    }
 }
 
 impl Display for Application {
@@ -79,13 +54,13 @@ impl Launch for Application {
                 cmd_lines
                     .into_iter()
                     .map(|cmd_line| {
-                        self.spawn(cmd_line, &Options { io: Io::Suppress })
+                        self.spawn(cmd_line, self.path.as_ref().map(|path| path.as_path()), &Options { io: Io::Suppress })
                     })
                     .collect()
             } else {
                 let cmd_line = self.exec.get_command_line(vec![]);
                 let opt = Options { io: Io::Inherit };
-                self.spawn(cmd_line, &opt).map(|child| vec![child])
+                self.spawn(cmd_line, self.path.as_ref().map(|path| path.as_path()), &opt).map(|child| vec![child])
             };
             match children {
                 Ok(_) => {
@@ -99,4 +74,8 @@ impl Launch for Application {
             ErrorKind::ApplicationNotFound.into()
         }
     }
+}
+
+impl Search for Application {
+
 }

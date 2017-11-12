@@ -3,13 +3,14 @@ use std::io::BufRead;
 use std::path::PathBuf;
 
 use lunch::errors::*;
-use freedesktop::locale::Locale;
-use freedesktop::parse::parse_groups;
-use freedesktop::entry::*;
+use super::locale::Locale;
+use super::parse::parse_groups;
+use super::entry::*;
 
+#[derive(Debug)]
 pub struct DesktopFile {
-    desktop_entry: DesktopEntry,
-    actions: Vec<DesktopAction>,
+    pub desktop_entry: DesktopEntry,
+    pub actions: Vec<DesktopAction>,
 }
 
 impl DesktopFile {
@@ -31,8 +32,8 @@ impl DesktopFile {
             .map(|(key, value)| Self::convert_desktop_action(value))
             .collect::<Result<Vec<DesktopAction>>>()?;
         Ok(DesktopFile {
-            desktop_entry: desktop_entry,
-            actions: actions,
+            desktop_entry,
+            actions,
         })
     }
 

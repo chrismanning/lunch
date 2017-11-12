@@ -1,11 +1,18 @@
 pub mod errors;
 pub mod env;
 mod iteratorext;
-pub mod freedesktop;
+mod freedesktop;
+mod exec;
 
 use self::errors::*;
 
 pub use std::result::Result as StdResult;
+
+mod search;
+pub use self::search::Search;
+
+mod launch;
+pub use self::launch::Launch;
 
 enum Io {
     Suppress,
@@ -14,8 +21,4 @@ enum Io {
 
 pub struct Options {
     io: Io,
-}
-
-pub trait Launch {
-    fn launch(&self, args: Vec<String>) -> Error;
 }

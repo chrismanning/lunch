@@ -6,7 +6,6 @@ use xdg::BaseDirectories as XdgDirs;
 
 pub mod locale;
 mod parse;
-pub mod exec;
 mod application;
 pub mod entry;
 pub mod desktopfile;
@@ -15,6 +14,7 @@ use lunch::errors::*;
 
 use self::locale::Locale;
 use self::entry::*;
+use self::desktopfile::DesktopFile;
 
 pub struct DesktopFiles {
     desktop_files: Vec<PathBuf>,
@@ -28,6 +28,7 @@ impl DesktopFiles {
     pub fn find_exact_match(&self, name: &str, locale: &Locale) -> Result<DesktopEntry> {
         self.parse_files(locale)
             .into_iter()
+            .map(|desktop_file| desktop_file.desktop_entry)
             .filter(|entry| entry.entry_type == "Application")
             .filter(|entry| !entry.no_display)
             .skip_while(|entry| entry.name != name)
@@ -35,35 +36,34 @@ impl DesktopFiles {
             .ok_or_else(|| ErrorKind::NoMatchFound(name.to_owned()).into())
     }
 
-    pub fn parse_files(&self, locale: &Locale) -> Vec<DesktopEntry> {
-//        self.desktop_files
-//            .iter()
-//            .map(|buf| File::open(buf.as_path()))
-//            .filter_map(|file| match file {
-//                Ok(e) => {
-//                    debug!("Opened file {:?}", e);
-//                    Some(e)
-//                }
-//                Err(err) => {
-//                    warn!("Error opening file: {}", err);
-//                    None
-//                }
-//            })
-//            .map(|file| {
-//                DesktopEntry::read_desktop_entry(BufReader::new(file), locale)
-//            })
-//            .filter_map(|entry| match entry {
-//                Ok(e) => {
-//                    debug!("Found desktop entry file {:?}", e);
-//                    Some(e)
-//                }
-//                Err(err) => {
-//                    warn!("Error reading desktop file: {}", err);
-//                    None
-//                }
-//            })
-//            .collect()
-        unimplemented!()
+    pub fn parse_files(&self, locale: &Locale) -> Vec<DesktopFile> {
+        self.desktop_files
+            .iter()
+            .map(|buf| File::open(buf.as_path()))
+            .filter_map(|file| match file {
+                Ok(e) => {
+                    debug!("Opened file {:?}", e);
+                    Some(e)
+                }
+                Err(err) => {
+                    warn!("Error opening file: {}", err);
+                    None
+                }
+            })
+            .map(|file| {
+                DesktopFile::read(BufReader::new(file), locale)
+            })
+            .filter_map(|entry| match entry {
+                Ok(e) => {
+                    debug!("Found desktop entry file {:?}", e);
+                    Some(e)
+                }
+                Err(err) => {
+                    warn!("Error reading desktop file: {}", err);
+                    None
+                }
+            })
+            .collect()
     }
 }
 

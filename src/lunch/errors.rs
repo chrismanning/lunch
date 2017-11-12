@@ -1,7 +1,7 @@
 use std::str::ParseBoolError;
 use xdg::BaseDirectoriesError;
 
-use super::freedesktop::exec::FieldCode;
+use super::exec::FieldCode;
 
 // Create the Error, ErrorKind, ResultExt, and Result types
 error_chain! {

@@ -7,7 +7,11 @@ use super::locale::Locale;
 type Group = HashMap<String, String>;
 type Groups = HashMap<String, Group>;
 
-pub fn parse_groups<LineIter, HeaderPred>(lines: LineIter, header_pred: HeaderPred, locale: &Locale) -> Result<Groups>
+pub fn parse_groups<LineIter, HeaderPred>(
+    lines: LineIter,
+    header_pred: HeaderPred,
+    locale: &Locale,
+) -> Result<Groups>
 where
     LineIter: Iterator<Item = Result<String>>,
     HeaderPred: Fn(&String) -> bool,
@@ -15,7 +19,9 @@ where
     let mut groups = Groups::new();
     let mut lines = lines.peekable();
     while lines.peek().is_some() {
-        if let Some((header, localised_group)) = parse_localised_group(&mut lines, |header|(&header_pred)(header))? {
+        if let Some((header, localised_group)) =
+            parse_localised_group(&mut lines, |header| (&header_pred)(header))?
+        {
             let group = localised_group.resolve_to_locale(locale);
             groups.insert(header, group);
         }
@@ -31,7 +37,11 @@ mod parse_groups_tests {
     #[should_panic]
     fn error() {
         let lines: Vec<Result<String>> = vec![Ok("[Group]".to_owned()), Err("error".into())];
-        let group = parse_groups(lines.into_iter(), |header| header =="Group", &Locale::default());
+        let group = parse_groups(
+            lines.into_iter(),
+            |header| header == "Group",
+            &Locale::default(),
+        );
         group.unwrap();
     }
 
@@ -51,7 +61,11 @@ mod parse_groups_tests {
         # Bottom comment
         ";
         let lines = input.lines().map(|line| Ok(line.to_owned()));
-        let groups = parse_groups(lines, |header| header =="Another Group", &Locale::default());
+        let groups = parse_groups(
+            lines,
+            |header| header == "Another Group",
+            &Locale::default(),
+        );
         assert_eq!(
             groups.unwrap(),
             hashmap!{
@@ -212,26 +226,31 @@ mod localised_value_tests {
     }
 }
 
-fn parse_localised_group<LineIter, HeaderPred>(lines: &mut LineIter, header_pred: HeaderPred) -> Result<Option<(String, LocalisedGroup)>>
+fn parse_localised_group<LineIter, HeaderPred>(
+    lines: &mut LineIter,
+    header_pred: HeaderPred,
+) -> Result<Option<(String, LocalisedGroup)>>
 where
     LineIter: Iterator<Item = Result<String>>,
     HeaderPred: Fn(&String) -> bool,
 {
     let header_pred = move |line: &String| {
-        !parse_header(line).as_ref().map(&header_pred).unwrap_or(false)
+        !parse_header(line).as_ref().map(&header_pred).unwrap_or(
+            false,
+        )
     };
     let mut lines = lines
         .map_result(|line| line.trim().to_owned())
         .skip_while_result(header_pred);
     let header = match lines.next() {
-        Some(header) => match parse_header(&header?) {
-            Some(header) => {
-                header
-            },
-            None => {
-                return Ok(None);
+        Some(header) => {
+            match parse_header(&header?) {
+                Some(header) => header,
+                None => {
+                    return Ok(None);
+                }
             }
-        },
+        }
         None => {
             return Ok(None);
         }
@@ -267,7 +286,10 @@ mod parse_localised_group_tests {
         let input = "[group header]";
         let mut lines = input.lines().map(|line| Ok(line.to_owned()));
         let localised_group = parse_localised_group(&mut lines, |header| header == "group header");
-        assert_eq!(localised_group.unwrap().unwrap().1, LocalisedGroup::default());
+        assert_eq!(
+            localised_group.unwrap().unwrap().1,
+            LocalisedGroup::default()
+        );
     }
 
     #[test]
@@ -344,7 +366,10 @@ mod parse_header_tests {
 
     #[test]
     fn header() {
-        assert_eq!(parse_header(&"[group header]".to_owned()), Some("group header".to_owned()));
+        assert_eq!(
+            parse_header(&"[group header]".to_owned()),
+            Some("group header".to_owned())
+        );
     }
 
     #[test]

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Child, Stdio};
 use std::result::Result as StdResult;
 use std::str::FromStr;
+use std::fmt::{Formatter, Display, Result as FmtResult};
 
 use lunch::errors::*;
 
@@ -24,7 +25,7 @@ impl Exec {
                 .count() <= 1
         );
         CmdLine {
-            cmd: &self.exec,
+            cmd: self.exec.clone(),
             args: self.args
                 .iter()
                 .flat_map(|arg| match *arg {
@@ -241,9 +242,15 @@ mod exec_tests {
 }
 
 #[derive(Debug)]
-pub struct CmdLine<'a> {
-    pub cmd: &'a str,
+pub struct CmdLine {
+    pub cmd: String,
     pub args: Vec<String>,
+}
+
+impl ::std::fmt::Display for CmdLine {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        unimplemented!()
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -258,7 +265,7 @@ pub enum FieldCode {
 }
 
 impl FieldCode {
-    pub fn expand_exec<'a>(&self, exec: &'a Exec, args: Vec<String>) -> Vec<CmdLine<'a>> {
+    pub fn expand_exec(&self, exec: &Exec, args: Vec<String>) -> Vec<CmdLine> {
         use self::FieldCode::*;
         if args.is_empty() {
             vec![exec.get_command_line(args)]
