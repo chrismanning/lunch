@@ -7,20 +7,11 @@ use super::locale::Locale;
 type Group = HashMap<String, String>;
 type Groups = HashMap<String, Group>;
 
-pub fn parse_groups<HeaderPred>(
-    src: &str,
-    header_pred: HeaderPred,
-    locale: &Locale,
-) -> Result<Groups>
-where
-    HeaderPred: Fn(&str) -> bool,
-{
+pub fn parse_desktop_groups(src: &str, locale: &Locale) -> Result<Groups> {
     let mut groups = Groups::new();
     let mut lines = src.lines().peekable();
     while lines.peek().is_some() {
-        if let Some((header, localised_group)) =
-            parse_localised_group(&mut lines, |header| (&header_pred)(header))
-        {
+        if let Some((header, localised_group)) = parse_localised_group(&mut lines) {
             let group = localised_group.resolve_to_locale(locale);
             groups.insert(header, group);
         }
@@ -37,29 +28,25 @@ mod parse_groups_tests {
     use super::*;
 
     #[test]
-    fn parse_groups_default_locale() {
+    fn parse_desktop_groups_default_locale() {
         let input = "[group header]
         # Comment
         Key1=Value1
         Key1[en]=Value2
         Key2[C]=Value3
 
-        [Another Group]
+        [Desktop Group]
         # Top comment
         Key=Value
         # Middle comment
         Key=Overwritten Value
         # Bottom comment
         ";
-        let groups = parse_groups(
-            input,
-            |header| header == "Another Group",
-            &Locale::default(),
-        );
+        let groups = parse_desktop_groups(input, &Locale::default());
         assert_eq!(
             groups.unwrap(),
             hashmap!{
-            "Another Group".to_owned() => hashmap!{
+            "Desktop Group".to_owned() => hashmap!{
                 "Key".to_owned() => "Overwritten Value".to_owned(),
             }
         }
@@ -216,18 +203,15 @@ mod localised_value_tests {
     }
 }
 
-fn parse_localised_group<'a, LineIter, HeaderPred>(
-    lines: &mut LineIter,
-    header_pred: HeaderPred,
-) -> Option<(String, LocalisedGroup)>
+fn parse_localised_group<'a, LineIter>(lines: &mut LineIter) -> Option<(String, LocalisedGroup)>
 where
     LineIter: Iterator<Item = &'a str>,
-    HeaderPred: Fn(&String) -> bool,
 {
     let mut lines = lines.map(|line| line.trim()).skip_while(move |line| {
-        !parse_header(line).as_ref().map(&header_pred).unwrap_or(
-            false,
-        )
+        !parse_header(line)
+            .as_ref()
+            .map(|header| header.starts_with("Desktop "))
+            .unwrap_or(false)
     });
     let header = match lines.next() {
         Some(header) => {
@@ -267,21 +251,19 @@ mod parse_localised_group_tests {
 
     #[test]
     fn header_only() {
-        let input = "[group header]";
-        let localised_group =
-            parse_localised_group(&mut input.lines(), |header| header == "group header");
+        let input = "[Desktop group header]";
+        let localised_group = parse_localised_group(&mut input.lines());
         assert_eq!(localised_group.unwrap().1, LocalisedGroup::default());
     }
 
     #[test]
     fn single_group() {
-        let input = "[group header]
+        let input = "[Desktop group header]
         # Comment
         Key1=Value1
         Key1[en]=Value2
         Key2[C]=Value3";
-        let localised_group =
-            parse_localised_group(&mut input.lines(), |header| header == "group header");
+        let localised_group = parse_localised_group(&mut input.lines());
         assert_eq!(
             localised_group.unwrap().1.group,
             hashmap! {
@@ -308,15 +290,15 @@ mod parse_localised_group_tests {
         Key1[en]=Value2
         Key2[C]=Value3
 
-        [Another Group]
+        [Desktop Another Group]
         # Top comment
         Key=Value
         # Middle comment
         Key=Overwritten Value
         # Bottom comment
         ";
-        let localised_group =
-            parse_localised_group(&mut input.lines(), |header| header == "Another Group");
+        let localised_group = parse_localised_group(&mut input.lines());
+        let localised_group = parse_localised_group(&mut input.lines());
         assert_eq!(
             localised_group.unwrap().1.group,
             hashmap! {
