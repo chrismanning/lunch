@@ -15,11 +15,10 @@ pub struct DesktopFile {
 
 impl DesktopFile {
 
-    pub fn read<R: BufRead>(input: R, locale: &Locale) -> Result<DesktopFile> {
-        let mut groups = parse_groups(
-            input.lines().map(
-                |res| res.chain_err(|| "Error reading file"),
-            ),
+    pub fn read<R: BufRead>(mut input: R, locale: &Locale) -> Result<DesktopFile> {
+        let mut buf = String::new();
+        input.read_to_string(&mut buf)?;
+        let mut groups = parse_groups(&buf,
             |header| header.starts_with("Desktop "),
             locale,
         )?;

@@ -7,43 +7,34 @@ use super::locale::Locale;
 type Group = HashMap<String, String>;
 type Groups = HashMap<String, Group>;
 
-pub fn parse_groups<LineIter, HeaderPred>(
-    lines: LineIter,
+pub fn parse_groups<HeaderPred>(
+    src: &str,
     header_pred: HeaderPred,
     locale: &Locale,
 ) -> Result<Groups>
 where
-    LineIter: Iterator<Item = Result<String>>,
-    HeaderPred: Fn(&String) -> bool,
+    HeaderPred: Fn(&str) -> bool,
 {
     let mut groups = Groups::new();
-    let mut lines = lines.peekable();
+    let mut lines = src.lines().peekable();
     while lines.peek().is_some() {
         if let Some((header, localised_group)) =
-            parse_localised_group(&mut lines, |header| (&header_pred)(header))?
+            parse_localised_group(&mut lines, |header| (&header_pred)(header))
         {
             let group = localised_group.resolve_to_locale(locale);
             groups.insert(header, group);
         }
     }
-    Ok(groups)
+    if groups.is_empty() {
+        Err(ErrorKind::NoGroupsFound.into())
+    } else {
+        Ok(groups)
+    }
 }
 
 #[cfg(test)]
 mod parse_groups_tests {
     use super::*;
-
-    #[test]
-    #[should_panic]
-    fn error() {
-        let lines: Vec<Result<String>> = vec![Ok("[Group]".to_owned()), Err("error".into())];
-        let group = parse_groups(
-            lines.into_iter(),
-            |header| header == "Group",
-            &Locale::default(),
-        );
-        group.unwrap();
-    }
 
     #[test]
     fn parse_groups_default_locale() {
@@ -60,9 +51,8 @@ mod parse_groups_tests {
         Key=Overwritten Value
         # Bottom comment
         ";
-        let lines = input.lines().map(|line| Ok(line.to_owned()));
         let groups = parse_groups(
-            lines,
+            input,
             |header| header == "Another Group",
             &Locale::default(),
         );
@@ -226,55 +216,49 @@ mod localised_value_tests {
     }
 }
 
-fn parse_localised_group<LineIter, HeaderPred>(
+fn parse_localised_group<'a, LineIter, HeaderPred>(
     lines: &mut LineIter,
     header_pred: HeaderPred,
-) -> Result<Option<(String, LocalisedGroup)>>
+) -> Option<(String, LocalisedGroup)>
 where
-    LineIter: Iterator<Item = Result<String>>,
+    LineIter: Iterator<Item = &'a str>,
     HeaderPred: Fn(&String) -> bool,
 {
-    let header_pred = move |line: &String| {
+    let mut lines = lines.map(|line| line.trim()).skip_while(move |line| {
         !parse_header(line).as_ref().map(&header_pred).unwrap_or(
             false,
         )
-    };
-    let mut lines = lines
-        .map_result(|line| line.trim().to_owned())
-        .skip_while_result(header_pred);
+    });
     let header = match lines.next() {
         Some(header) => {
-            match parse_header(&header?) {
+            match parse_header(header) {
                 Some(header) => header,
                 None => {
-                    return Ok(None);
+                    return None;
                 }
             }
         }
         None => {
-            return Ok(None);
+            return None;
         }
     };
 
-    let lines: Vec<(String, String)> = lines
-        .filter_result(|line| !line.is_empty() && !line.starts_with('#'))
-        .take_while_result(|line| !line.starts_with('['))
-        .filter_map(|line| match line {
-            Ok(line) => split_first_to_owned('=', &line).map(Ok),
-            Err(err) => Some(Err(err)),
-        })
-        .collect::<Result<_>>()?;
+    let lines = lines
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .take_while(|line| !line.starts_with('['))
+        .filter_map(|line| split_first('=', line))
+        .collect::<Vec<_>>();
     let mut localised_group = LocalisedGroup::default();
     for (key, value) in lines {
-        let (key, locale) = parse_key(&key);
+        let (key, locale) = parse_key(key);
         let mut localised_value = localised_group.group.entry(key.to_owned()).or_insert_with(
             || {
                 LocalisedValue::default()
             },
         );
-        localised_value.insert(locale, value);
+        localised_value.insert(locale, value.to_owned());
     }
-    Ok(Some((header, localised_group)))
+    Some((header, localised_group))
 }
 
 #[cfg(test)]
@@ -284,12 +268,9 @@ mod parse_localised_group_tests {
     #[test]
     fn header_only() {
         let input = "[group header]";
-        let mut lines = input.lines().map(|line| Ok(line.to_owned()));
-        let localised_group = parse_localised_group(&mut lines, |header| header == "group header");
-        assert_eq!(
-            localised_group.unwrap().unwrap().1,
-            LocalisedGroup::default()
-        );
+        let localised_group =
+            parse_localised_group(&mut input.lines(), |header| header == "group header");
+        assert_eq!(localised_group.unwrap().1, LocalisedGroup::default());
     }
 
     #[test]
@@ -299,12 +280,10 @@ mod parse_localised_group_tests {
         Key1=Value1
         Key1[en]=Value2
         Key2[C]=Value3";
-        let localised_group = parse_localised_group(
-            &mut input.lines().map(|line| Ok(line.to_owned())),
-            |header| header == "group header",
-        );
+        let localised_group =
+            parse_localised_group(&mut input.lines(), |header| header == "group header");
         assert_eq!(
-            localised_group.unwrap().unwrap().1.group,
+            localised_group.unwrap().1.group,
             hashmap! {
                 "Key1".to_owned() => LocalisedValue {
                     localised_value: vec!{
@@ -336,10 +315,10 @@ mod parse_localised_group_tests {
         Key=Overwritten Value
         # Bottom comment
         ";
-        let mut lines = input.lines().map(|line| Ok(line.to_owned()));
-        let localised_group = parse_localised_group(&mut lines, |header| header == "Another Group");
+        let localised_group =
+            parse_localised_group(&mut input.lines(), |header| header == "Another Group");
         assert_eq!(
-            localised_group.unwrap().unwrap().1.group,
+            localised_group.unwrap().1.group,
             hashmap! {
                 "Key".to_owned() => LocalisedValue {
                     localised_value: vec![
@@ -351,7 +330,7 @@ mod parse_localised_group_tests {
     }
 }
 
-fn parse_header(line: &String) -> Option<String> {
+fn parse_header(line: &str) -> Option<String> {
     let mut chars = line.trim().chars();
     if chars.next() == Some('[') {
         Some(chars.take_while(|c| *c != ']').collect())

@@ -45,6 +45,8 @@ error_chain! {
             display("Exec string '{}' not valid", cmd_line)
         }
 
+        NoGroupsFound
+
         UnknownError
     }
     foreign_links {
