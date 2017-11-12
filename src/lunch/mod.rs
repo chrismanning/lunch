@@ -1,6 +1,5 @@
 pub mod errors;
 pub mod env;
-mod iteratorext;
 mod freedesktop;
 mod exec;
 
