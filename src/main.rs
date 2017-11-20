@@ -2,11 +2,11 @@
 
 extern crate lunch;
 
+extern crate clap;
+extern crate env_logger;
 extern crate error_chain;
 #[macro_use]
 extern crate log;
-extern crate env_logger;
-extern crate clap;
 
 use std::convert::TryInto;
 
@@ -14,7 +14,7 @@ use clap::App;
 
 use lunch::*;
 use lunch::errors::*;
-use lunch::freedesktop::locale::Locale;
+use lunch::env::*;
 
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -42,10 +42,7 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    env_logger::init().chain_err(
-        || "Error initialising logging",
-    )?;
-    let locale = Locale::from_env()?;
+    env_logger::init().chain_err(|| "Error initialising logging")?;
     let arg_matches = App::new(APP_NAME)
         .version(VERSION)
         .about(DESCRIPTION)
@@ -53,7 +50,12 @@ fn run() -> Result<()> {
         .get_matches();
     //    arg_matches.
 
-    let term = "";
+    let env = LunchEnv::init()?;
+    let keyword = "";
+    if let Some(lunchable) = env.keyword(keyword) {
+        return lunchable.launch(vec![]);
+    }
+
     //    let apps = lunch::freedesktop::find_all_desktop_files()?;
     //    apps.find_exact_match(term, &locale)
     //        .chain_err(|| format!("Error finding match for '{}'", term))

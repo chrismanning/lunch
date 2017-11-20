@@ -2,8 +2,9 @@ pub mod errors;
 pub mod env;
 mod freedesktop;
 mod exec;
+mod keyword;
 
-use self::errors::*;
+pub use self::errors::*;
 
 pub use std::result::Result as StdResult;
 

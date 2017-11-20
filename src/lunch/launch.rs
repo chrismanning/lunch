@@ -1,12 +1,12 @@
-use std::process::{Command, Child, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::path::Path;
 
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 
 use super::errors::*;
-use super::exec::{Exec, CmdLine, FieldCode};
-use lunch::{Options, Io};
+use super::exec::CmdLine;
+use lunch::{Io, Options};
 
 pub trait Launch {
     fn launch(&self, args: Vec<String>) -> Error;
@@ -35,9 +35,9 @@ fn init_cmd(cmd_line: CmdLine, work_dir: Option<&Path>, opt: &Options) -> Comman
     }
     match opt.io {
         Io::Suppress => {
-            cmd.stdout(Stdio::null()).stderr(Stdio::null()).stdin(
-                Stdio::null(),
-            );
+            cmd.stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .stdin(Stdio::null());
         }
         Io::Inherit => {
             cmd.stdout(Stdio::inherit())

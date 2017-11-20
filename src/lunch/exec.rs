@@ -1,9 +1,6 @@
-use std::convert::{From, TryFrom};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Child, Stdio};
 use std::result::Result as StdResult;
 use std::str::FromStr;
-use std::fmt::{Formatter, Display, Result as FmtResult};
+use std::fmt::{Formatter, Result as FmtResult};
 
 use lunch::errors::*;
 
@@ -63,23 +60,19 @@ fn split_command_line(cmd_line: &str) -> Result<Vec<String>> {
     let mut quote = false;
     while let Some(c) = chars.next() {
         match c {
-            '\\' => {
-                if let Some(c) = chars.next() {
-                    match c {
-                        'n' => token.push('\n'),
-                        't' => token.push('\t'),
-                        _ => token.push(c),
-                    }
+            '\\' => if let Some(c) = chars.next() {
+                match c {
+                    'n' => token.push('\n'),
+                    't' => token.push('\t'),
+                    _ => token.push(c),
                 }
-            }
-            ' ' => {
-                if quote {
-                    token.push(c);
-                } else {
-                    slices.push(token.clone());
-                    token.clear();
-                }
-            }
+            },
+            ' ' => if quote {
+                token.push(c);
+            } else {
+                slices.push(token.clone());
+                token.clear();
+            },
             '"' => {
                 quote = !quote;
             }
@@ -226,7 +219,9 @@ mod exec_tests {
 
     #[test]
     fn exec_quoted_arg() {
-        let exec: Exec = r##"/opt/Echo\ 2/echo -n %f -e "arg with spaces" -v"##.parse().unwrap();
+        let exec: Exec = r##"/opt/Echo\ 2/echo -n %f -e "arg with spaces" -v"##
+            .parse()
+            .unwrap();
         assert_eq!(&exec.exec, "/opt/Echo 2/echo");
         assert_eq!(
             exec.args,
@@ -271,11 +266,9 @@ impl FieldCode {
             vec![exec.get_command_line(args)]
         } else {
             match *self {
-                SingleFile | SingleUrl => {
-                    args.into_iter()
-                        .map(|arg| exec.get_command_line(vec![arg]))
-                        .collect()
-                }
+                SingleFile | SingleUrl => args.into_iter()
+                    .map(|arg| exec.get_command_line(vec![arg]))
+                    .collect(),
                 MultipleFiles | MultipleUrls => vec![exec.get_command_line(args)],
                 _ => vec![exec.get_command_line(vec![])],
             }

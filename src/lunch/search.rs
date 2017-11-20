@@ -1,9 +1,8 @@
-
 pub trait Search {
-//    fn search
+    fn search_terms(&self) -> SearchTerms;
 }
 
 pub struct SearchTerms {
-    terms: Vec<String>,
-    keywords: Vec<String>,
+    pub terms: Vec<String>,
+    pub keywords: Vec<String>,
 }

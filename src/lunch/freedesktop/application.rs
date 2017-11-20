@@ -1,21 +1,25 @@
 use std::path::{Path, PathBuf};
-use std::convert::{From, TryFrom};
-use std::fmt::{Result as FmtResult, Display, Formatter};
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use lunch::exec::{Exec, FieldCode};
-use lunch::{Options, Io, Launch, Search};
 use lunch::errors::*;
+use lunch::exec::{Exec, FieldCode};
+use lunch::{Io, Launch, Options, Search};
+use lunch::search::SearchTerms;
 
+#[derive(Debug)]
 pub struct Application {
-    name: String,
-    icon: Option<String>,
-    exec: Exec,
-    field_code: Option<FieldCode>,
-    try_exec: Option<PathBuf>,
-    path: Option<PathBuf>,
-    actions: Vec<Action>,
+    pub name: String,
+    pub icon: Option<String>,
+    pub comment: Option<String>,
+    pub keywords: Vec<String>,
+    pub exec: Exec,
+    pub field_code: Option<FieldCode>,
+    pub try_exec: Option<PathBuf>,
+    pub path: Option<PathBuf>,
+    pub actions: Vec<Action>,
 }
 
+#[derive(Debug)]
 pub struct Action {
     name: String,
     icon: Option<String>,
@@ -54,21 +58,27 @@ impl Launch for Application {
                 cmd_lines
                     .into_iter()
                     .map(|cmd_line| {
-                        self.spawn(cmd_line, self.path.as_ref().map(|path| path.as_path()), &Options { io: Io::Suppress })
+                        self.spawn(
+                            cmd_line,
+                            self.path.as_ref().map(|path| path.as_path()),
+                            &Options { io: Io::Suppress },
+                        )
                     })
                     .collect()
             } else {
                 let cmd_line = self.exec.get_command_line(vec![]);
                 let opt = Options { io: Io::Inherit };
-                self.spawn(cmd_line, self.path.as_ref().map(|path| path.as_path()), &opt).map(|child| vec![child])
+                self.spawn(
+                    cmd_line,
+                    self.path.as_ref().map(|path| path.as_path()),
+                    &opt,
+                ).map(|child| vec![child])
             };
             match children {
                 Ok(_) => {
                     ::std::process::exit(0);
                 }
-                Err(err) => {
-                    err.into()
-                }
+                Err(err) => err.into(),
             }
         } else {
             ErrorKind::ApplicationNotFound.into()
@@ -77,5 +87,14 @@ impl Launch for Application {
 }
 
 impl Search for Application {
-
+    fn search_terms(&self) -> SearchTerms {
+        let mut terms = vec![self.name.clone()];
+        if let Some(ref comment) = self.comment {
+            terms.push(comment.clone())
+        }
+        SearchTerms {
+            terms,
+            keywords: self.keywords.clone(),
+        }
+    }
 }
