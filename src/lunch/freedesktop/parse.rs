@@ -219,16 +219,10 @@ where
             .map(|header| header.starts_with("Desktop "))
             .unwrap_or(false)
     });
-    let header = match lines.next() {
-        Some(header) => match parse_header(header) {
-            Some(header) => header,
-            None => {
-                return None;
-            }
-        },
-        None => {
-            return None;
-        }
+    let header = if let Some(header) = lines.next().and_then(parse_header) {
+        header
+    } else {
+        return None;
     };
 
     let lines = lines
@@ -251,6 +245,20 @@ where
 #[cfg(test)]
 mod parse_localised_group_tests {
     use super::*;
+
+    #[test]
+    fn no_input() {
+        let mut lines = "".lines();
+        lines.next();
+        let localised_group = parse_localised_group(&mut lines);
+        assert!(localised_group.is_none());
+    }
+
+    #[test]
+    fn no_group() {
+        let localised_group = parse_localised_group(&mut "".lines());
+        assert!(localised_group.is_none());
+    }
 
     #[test]
     fn header_only() {
