@@ -248,18 +248,30 @@ impl ::std::fmt::Display for CmdLine {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum FieldCode {
     SingleFile,
     MultipleFiles,
     SingleUrl,
     MultipleUrls,
-    Icon,
-    Name,
-    EntryUri,
 }
 
 impl FieldCode {
+    pub fn extract_field_code(exec: &str) -> Option<FieldCode> {
+        let field_code = if exec.contains("%f") {
+            FieldCode::SingleFile
+        } else if exec.contains("%F") {
+            FieldCode::MultipleFiles
+        } else if exec.contains("%u") {
+            FieldCode::SingleUrl
+        } else if exec.contains("%U") {
+            FieldCode::MultipleUrls
+        } else {
+            return None;
+        };
+        Some(field_code)
+    }
+
     pub fn expand_exec(&self, exec: &Exec, args: Vec<String>) -> Vec<CmdLine> {
         use self::FieldCode::*;
         if args.is_empty() {
@@ -270,7 +282,6 @@ impl FieldCode {
                     .map(|arg| exec.get_command_line(vec![arg]))
                     .collect(),
                 MultipleFiles | MultipleUrls => vec![exec.get_command_line(args)],
-                _ => vec![exec.get_command_line(vec![])],
             }
         }
     }
@@ -279,6 +290,17 @@ impl FieldCode {
 #[cfg(test)]
 mod field_code_tests {
     use super::*;
+
+    #[test]
+    fn test_extract() {
+        assert_eq!(Some(FieldCode::SingleFile), FieldCode::extract_field_code("/bin/echo %f"));
+        assert_eq!(Some(FieldCode::MultipleFiles), FieldCode::extract_field_code("/bin/echo %F"));
+        assert_eq!(Some(FieldCode::SingleUrl), FieldCode::extract_field_code("/bin/echo %u"));
+        assert_eq!(Some(FieldCode::MultipleUrls), FieldCode::extract_field_code("/bin/echo %U"));
+
+        assert_eq!(None, FieldCode::extract_field_code("/bin/echo %G"));
+        assert_eq!(None, FieldCode::extract_field_code("/bin/echo"));
+    }
 
     #[test]
     fn field_code_single_file_no_args() {

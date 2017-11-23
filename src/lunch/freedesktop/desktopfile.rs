@@ -1,15 +1,12 @@
 use std::collections::HashMap;
 use std::io::BufRead;
 use std::path::PathBuf;
-use std::convert::TryInto;
 
 use lunch::errors::*;
-use lunch::env::Lunchable;
 
 use super::locale::Locale;
 use super::parse::parse_desktop_groups;
 use super::entry::*;
-use super::application::Application;
 
 #[derive(Debug)]
 pub struct DesktopFile {
@@ -22,7 +19,7 @@ impl DesktopFile {
         let mut buf = String::new();
         input.read_to_string(&mut buf)?;
         let mut groups = parse_desktop_groups(&buf, locale)?;
-        let desktop_entry = Self::convert_desktop_entry(groups
+        let desktop_entry = Self::build_desktop_entry(groups
             .remove("Desktop Entry")
             .ok_or(ErrorKind::ApplicationNotFound)?)?;
         let actions = groups
@@ -35,7 +32,7 @@ impl DesktopFile {
                 )
             })
             .filter(|&(ref key, _)| desktop_entry.actions.contains(&key))
-            .map(|(_, value)| Self::convert_desktop_action(value))
+            .map(|(_, value)| Self::build_desktop_action(value))
             .collect::<Result<Vec<DesktopAction>>>()?;
         Ok(DesktopFile {
             desktop_entry,
@@ -43,7 +40,7 @@ impl DesktopFile {
         })
     }
 
-    fn convert_desktop_entry(desktop_entry_group: HashMap<String, String>) -> Result<DesktopEntry> {
+    fn build_desktop_entry(desktop_entry_group: HashMap<String, String>) -> Result<DesktopEntry> {
         let mut builder = DesktopEntryBuilder::default();
         for (key, value) in desktop_entry_group {
             match key.as_ref() {
@@ -77,40 +74,19 @@ impl DesktopFile {
         builder.build().map_err(|s| s.into())
     }
 
-    fn convert_desktop_action(
+    fn build_desktop_action(
         desktop_action_group: HashMap<String, String>,
     ) -> Result<DesktopAction> {
-        unimplemented!()
-    }
-}
+        let mut builder = DesktopActionBuilder::default();
+        for (key, value) in desktop_action_group {
+            match key.as_ref() {
+                "Name" => builder.name(value),
+                "Icon" => builder.icon(value),
+                "Exec" => builder.exec(value),
+                _ => &mut builder,
+            };
+        }
 
-impl TryInto<Box<Lunchable>> for DesktopFile {
-    type Error = Error;
-
-    fn try_into(self) -> Result<Box<Lunchable>> {
-        let app: Application = self.try_into()?;
-        Ok(Box::new(app))
-    }
-}
-
-impl TryInto<Application> for DesktopFile {
-    type Error = Error;
-
-    fn try_into(self) -> Result<Application> {
-        // TODO convert all the things
-        Ok(Application {
-            name: self.desktop_entry.name,
-            icon: self.desktop_entry.icon,
-            comment: self.desktop_entry.comment,
-            keywords: self.desktop_entry.keywords,
-            exec: self.desktop_entry
-                .exec
-                .ok_or(ErrorKind::InvalidCommandLine("".into()).into())
-                .and_then(|s| s.parse())?,
-            field_code: None,
-            try_exec: self.desktop_entry.try_exec.map(From::from),
-            path: self.desktop_entry.path.map(From::from),
-            actions: Vec::new(),
-        })
+        builder.build().map_err(|s| s.into())
     }
 }

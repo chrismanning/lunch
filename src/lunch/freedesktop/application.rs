@@ -1,6 +1,9 @@
 use std::path::{Path, PathBuf};
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::convert::TryFrom;
 
+use super::desktopfile::DesktopFile;
+use super::entry::*;
 use lunch::errors::*;
 use lunch::exec::{Exec, FieldCode};
 use lunch::{Io, Launch, Options, Search};
@@ -96,5 +99,41 @@ impl Search for Application {
             terms,
             keywords: self.keywords.clone(),
         }
+    }
+}
+
+impl TryFrom<DesktopAction> for Action {
+    type Error = Error;
+
+    fn try_from(desktop_action: DesktopAction) -> Result<Action> {
+        Ok(Action {
+            name: desktop_action.name,
+            exec: desktop_action.exec.parse()?,
+            icon: desktop_action.icon,
+        })
+    }
+}
+
+impl TryFrom<DesktopFile> for Application {
+    type Error = Error;
+
+    fn try_from(desktop_file: DesktopFile) -> Result<Application> {
+        let exec = desktop_file.desktop_entry.exec;
+        Ok(Application {
+            name: desktop_file.desktop_entry.name,
+            icon: desktop_file.desktop_entry.icon,
+            comment: desktop_file.desktop_entry.comment,
+            keywords: desktop_file.desktop_entry.keywords,
+            exec: exec.clone()
+                .ok_or(ErrorKind::InvalidCommandLine("".into()).into())
+                .and_then(|s| s.parse())?,
+            field_code: exec.and_then(|exec| FieldCode::extract_field_code(&exec)),
+            try_exec: desktop_file.desktop_entry.try_exec.map(From::from),
+            path: desktop_file.desktop_entry.path.map(From::from),
+            actions: desktop_file.actions
+                .into_iter()
+                .map(TryFrom::try_from)
+                .collect::<Result<_>>()?,
+        })
     }
 }

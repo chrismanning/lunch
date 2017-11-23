@@ -22,7 +22,7 @@ pub struct DesktopEntry {
 
 #[derive(Debug, Default, Builder)]
 pub struct DesktopAction {
-    #[builder(setter(into))] name: String,
-    #[builder(setter(into))] exec: String,
-    #[builder(setter(into), default = "None")] icon: Option<String>,
+    #[builder(setter(into))] pub name: String,
+    #[builder(setter(into))] pub exec: String,
+    #[builder(setter(into), default = "None")] pub icon: Option<String>,
 }
