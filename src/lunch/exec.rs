@@ -293,10 +293,22 @@ mod field_code_tests {
 
     #[test]
     fn test_extract() {
-        assert_eq!(Some(FieldCode::SingleFile), FieldCode::extract_field_code("/bin/echo %f"));
-        assert_eq!(Some(FieldCode::MultipleFiles), FieldCode::extract_field_code("/bin/echo %F"));
-        assert_eq!(Some(FieldCode::SingleUrl), FieldCode::extract_field_code("/bin/echo %u"));
-        assert_eq!(Some(FieldCode::MultipleUrls), FieldCode::extract_field_code("/bin/echo %U"));
+        assert_eq!(
+            Some(FieldCode::SingleFile),
+            FieldCode::extract_field_code("/bin/echo %f")
+        );
+        assert_eq!(
+            Some(FieldCode::MultipleFiles),
+            FieldCode::extract_field_code("/bin/echo %F")
+        );
+        assert_eq!(
+            Some(FieldCode::SingleUrl),
+            FieldCode::extract_field_code("/bin/echo %u")
+        );
+        assert_eq!(
+            Some(FieldCode::MultipleUrls),
+            FieldCode::extract_field_code("/bin/echo %U")
+        );
 
         assert_eq!(None, FieldCode::extract_field_code("/bin/echo %G"));
         assert_eq!(None, FieldCode::extract_field_code("/bin/echo"));

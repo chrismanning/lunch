@@ -130,7 +130,8 @@ impl TryFrom<DesktopFile> for Application {
             field_code: exec.and_then(|exec| FieldCode::extract_field_code(&exec)),
             try_exec: desktop_file.desktop_entry.try_exec.map(From::from),
             path: desktop_file.desktop_entry.path.map(From::from),
-            actions: desktop_file.actions
+            actions: desktop_file
+                .actions
                 .into_iter()
                 .map(TryFrom::try_from)
                 .collect::<Result<_>>()?,

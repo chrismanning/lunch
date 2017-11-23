@@ -16,9 +16,8 @@ pub struct DesktopFile {
 
 impl DesktopFile {
     pub fn read<R: BufRead>(mut input: R, locale: &Locale) -> Result<DesktopFile> {
-        let mut buf = String::new();
-        input.read_to_string(&mut buf)?;
-        let mut groups = parse_desktop_groups(&buf, locale)?;
+        let input = read_whole(input)?;
+        let mut groups = parse_desktop_groups(&input, locale)?;
         let desktop_entry = Self::build_desktop_entry(groups
             .remove("Desktop Entry")
             .ok_or(ErrorKind::ApplicationNotFound)?)?;
@@ -89,4 +88,10 @@ impl DesktopFile {
 
         builder.build().map_err(|s| s.into())
     }
+}
+
+fn read_whole<R: BufRead>(mut reader: R) -> Result<String> {
+    let mut string = String::new();
+    reader.read_to_string(&mut string)?;
+    Ok(string)
 }
