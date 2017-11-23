@@ -27,6 +27,13 @@ mod parse_desktop_groups_tests {
     use super::*;
 
     #[test]
+    fn empty_group_err() {
+        let input = "";
+        let groups = parse_desktop_groups(input, &Locale::default());
+        assert!(groups.is_err());
+    }
+
+    #[test]
     fn parse_desktop_groups_default_locale() {
         let input = "[group header]
         # Comment
