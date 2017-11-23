@@ -53,7 +53,7 @@ fn run() -> Result<()> {
     let env = LunchEnv::init()?;
     let keyword = "";
     if let Some(lunchable) = env.keyword(keyword) {
-        return lunchable.launch(vec![]);
+        return Err(lunchable.launch(vec![]));
     }
 
     //    let apps = lunch::freedesktop::find_all_desktop_files()?;
