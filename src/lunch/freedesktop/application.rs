@@ -47,36 +47,29 @@ impl Display for Application {
 
 impl Launch for Application {
     fn launch(&self, args: Vec<String>) -> Error {
-        if self.can_exec() {
-            info!("Launching '{}'...", self);
-            if let Some(ref path) = self.try_exec {
-                let path = Path::new(path);
-                if !path.exists() {
-                    return ErrorKind::ApplicationNotFound.into();
-                }
+        if !self.can_exec() {
+            return ErrorKind::ApplicationNotFound.into();
+        }
+        info!("Launching '{}'...", self);
+        if let Some(ref path) = self.try_exec {
+            let path = Path::new(path);
+            if !path.exists() {
+                return ErrorKind::ApplicationNotFound.into();
             }
+        }
 
-            let children = if let Some(field_code) = self.field_code {
-                let cmd_lines = field_code.expand_exec(&self.exec, args);
-                cmd_lines
-                    .into_iter()
-                    .map(|cmd_line| {
-                        self.spawn(
-                            cmd_line,
-                            self.path.as_ref().map(|path| path.as_path()),
-                            &Options { io: Io::Suppress },
-                        )
-                    })
-                    .collect()
-            } else {
-                let cmd_line = self.exec.get_command_line(vec![]);
-                let opt = Options { io: Io::Inherit };
-                self.spawn(
-                    cmd_line,
-                    self.path.as_ref().map(|path| path.as_path()),
-                    &opt,
-                ).map(|child| vec![child])
-            };
+        if let Some(field_code) = self.field_code {
+            let cmd_lines = field_code.expand_exec(&self.exec, args);
+            let children = cmd_lines
+                .into_iter()
+                .map(|cmd_line| {
+                    self.spawn(
+                        cmd_line,
+                        self.path.as_ref().map(|path| path.as_path()),
+                        &Options { io: Io::Suppress },
+                    )
+                })
+                .collect::<Result<Vec<_>>>();
             match children {
                 Ok(_) => {
                     ::std::process::exit(0);
@@ -84,7 +77,13 @@ impl Launch for Application {
                 Err(err) => err.into(),
             }
         } else {
-            ErrorKind::ApplicationNotFound.into()
+            let cmd_line = self.exec.get_command_line(vec![]);
+            let opt = Options { io: Io::Inherit };
+            self.exec(
+                cmd_line,
+                self.path.as_ref().map(|path| path.as_path()),
+                &opt,
+            )
         }
     }
 }
@@ -95,9 +94,10 @@ impl Search for Application {
         if let Some(ref comment) = self.comment {
             terms.push(comment.clone())
         }
+        use ::std::borrow::{Borrow, Cow};
         SearchTerms {
-            terms,
-            keywords: self.keywords.clone(),
+            terms: self.keywords.iter().map(Borrow::borrow).map(Cow::Borrowed).collect(),
+            keywords: self.keywords.iter().map(Borrow::borrow).map(Cow::Borrowed).collect(),
         }
     }
 }
