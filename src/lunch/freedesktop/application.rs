@@ -94,10 +94,18 @@ impl Search for Application {
         if let Some(ref comment) = self.comment {
             terms.push(comment.clone())
         }
-        use ::std::borrow::{Borrow, Cow};
+        use std::borrow::{Borrow, Cow};
         SearchTerms {
-            terms: self.keywords.iter().map(Borrow::borrow).map(Cow::Borrowed).collect(),
-            keywords: self.keywords.iter().map(Borrow::borrow).map(Cow::Borrowed).collect(),
+            terms: self.keywords
+                .iter()
+                .map(Borrow::borrow)
+                .map(Cow::Borrowed)
+                .collect(),
+            keywords: self.keywords
+                .iter()
+                .map(Borrow::borrow)
+                .map(Cow::Borrowed)
+                .collect(),
         }
     }
 }

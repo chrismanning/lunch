@@ -18,9 +18,9 @@ impl DesktopFile {
     pub fn read<R: BufRead>(input: R, locale: &Locale) -> Result<DesktopFile> {
         let input = read_whole(input)?;
         let mut groups = parse_desktop_groups(&input, locale)?;
-        let desktop_entry = Self::build_desktop_entry(groups
-            .remove("Desktop Entry")
-            .ok_or(ErrorKind::ApplicationNotFound)?)?;
+        let desktop_entry = Self::build_desktop_entry(groups.remove("Desktop Entry").ok_or(
+            ErrorKind::ApplicationNotFound,
+        )?)?;
         let actions = groups
             .into_iter()
             .filter(|&(ref key, _)| key.starts_with("Desktop Action "))
@@ -50,10 +50,22 @@ impl DesktopFile {
                 "Comment" => builder.comment(value),
                 "Icon" => builder.icon(value),
                 "Hidden" => builder.hidden(value.parse()?),
-                "OnlyShowIn" => builder
-                    .only_show_in(value.split(';').map(|keyword| keyword.to_owned()).collect()),
-                "NotShowIn" => builder
-                    .not_show_in(value.split(';').map(|keyword| keyword.to_owned()).collect()),
+                "OnlyShowIn" => {
+                    builder.only_show_in(
+                        value
+                            .split(';')
+                            .map(|keyword| keyword.to_owned())
+                            .collect(),
+                    )
+                }
+                "NotShowIn" => {
+                    builder.not_show_in(
+                        value
+                            .split(';')
+                            .map(|keyword| keyword.to_owned())
+                            .collect(),
+                    )
+                }
                 "TryExec" => builder.try_exec(value),
                 "Exec" => builder.exec(value),
                 "Path" => builder.path(PathBuf::from(value)),

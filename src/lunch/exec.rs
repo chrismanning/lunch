@@ -1,6 +1,5 @@
 use std::result::Result as StdResult;
 use std::str::FromStr;
-use std::fmt::{Formatter, Result as FmtResult};
 
 use lunch::errors::*;
 
@@ -60,19 +59,23 @@ fn split_command_line(cmd_line: &str) -> Result<Vec<String>> {
     let mut quote = false;
     while let Some(c) = chars.next() {
         match c {
-            '\\' => if let Some(c) = chars.next() {
-                match c {
-                    'n' => token.push('\n'),
-                    't' => token.push('\t'),
-                    _ => token.push(c),
+            '\\' => {
+                if let Some(c) = chars.next() {
+                    match c {
+                        'n' => token.push('\n'),
+                        't' => token.push('\t'),
+                        _ => token.push(c),
+                    }
                 }
-            },
-            ' ' => if quote {
-                token.push(c);
-            } else {
-                slices.push(token.clone());
-                token.clear();
-            },
+            }
+            ' ' => {
+                if quote {
+                    token.push(c);
+                } else {
+                    slices.push(token.clone());
+                    token.clear();
+                }
+            }
             '"' => {
                 quote = !quote;
             }
@@ -242,12 +245,6 @@ pub struct CmdLine {
     pub args: Vec<String>,
 }
 
-impl ::std::fmt::Display for CmdLine {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        unimplemented!()
-    }
-}
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum FieldCode {
     SingleFile,
@@ -278,9 +275,11 @@ impl FieldCode {
             vec![exec.get_command_line(args)]
         } else {
             match *self {
-                SingleFile | SingleUrl => args.into_iter()
-                    .map(|arg| exec.get_command_line(vec![arg]))
-                    .collect(),
+                SingleFile | SingleUrl => {
+                    args.into_iter()
+                        .map(|arg| exec.get_command_line(vec![arg]))
+                        .collect()
+                }
                 MultipleFiles | MultipleUrls => vec![exec.get_command_line(args)],
             }
         }
