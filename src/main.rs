@@ -42,7 +42,9 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    env_logger::init().chain_err(|| "Error initialising logging")?;
+    env_logger::init().chain_err(
+        || "Error initialising logging",
+    )?;
     let arg_matches = App::new(APP_NAME)
         .version(VERSION)
         .about(DESCRIPTION)

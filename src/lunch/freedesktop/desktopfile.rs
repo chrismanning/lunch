@@ -15,7 +15,7 @@ pub struct DesktopFile {
 }
 
 impl DesktopFile {
-    pub fn read<R: BufRead>(mut input: R, locale: &Locale) -> Result<DesktopFile> {
+    pub fn read<R: BufRead>(input: R, locale: &Locale) -> Result<DesktopFile> {
         let input = read_whole(input)?;
         let mut groups = parse_desktop_groups(&input, locale)?;
         let desktop_entry = Self::build_desktop_entry(groups

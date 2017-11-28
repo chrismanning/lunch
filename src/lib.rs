@@ -1,7 +1,6 @@
 #![recursion_limit = "128"]
 #![feature(try_from)]
 #![feature(slice_patterns)]
-#![feature(advanced_slice_patterns)]
 
 extern crate clap;
 #[macro_use]

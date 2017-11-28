@@ -1,46 +1,47 @@
-use super::env::Lunchable;
+use super::search::Search;
 
-pub struct Keyword {
-    lunchables: Vec<Box<Lunchable>>,
+pub struct Keyword<T: Search + ?Sized> {
+    search_items: Vec<Box<T>>,
 }
 
-impl Keyword {
-    pub fn new(lunchables: Vec<Box<Lunchable>>) -> Self {
-        Keyword { lunchables }
+impl<T: Search + ?Sized> Keyword<T> {
+    pub fn new(search_items: Vec<Box<T>>) -> Self {
+        Keyword { search_items }
     }
 
-    pub fn search(mut self, keyword: &str) -> Option<Box<Lunchable>> {
-        if let Some((n, _)) = self.find(|ref lunchable| {
-            lunchable
+    pub fn search(mut self, keyword: &str) -> Option<Box<T>> {
+        if let Some(n) = self.find(|ref search_item| {
+            search_item
                 .search_terms()
                 .keywords
                 .iter()
                 .any(|k| k == keyword)
         }) {
-            return Some(self.lunchables.swap_remove(n));
+            return Some(self.search_items.swap_remove(n));
         }
         if keyword.len() > 3 {
-            if let Some((n, _)) = self.find(|ref lunchable| {
-                lunchable
+            if let Some(n) = self.find(|ref search_item| {
+                search_item
                     .search_terms()
                     .keywords
                     .iter()
                     .any(|k| k.starts_with(keyword))
             }) {
-                return Some(self.lunchables.swap_remove(n));
+                return Some(self.search_items.swap_remove(n));
             }
         }
         None
     }
 
-    fn find<P>(&self, mut predicate: P) -> Option<(usize, &Box<Lunchable>)>
+    fn find<P>(&self, mut predicate: P) -> Option<usize>
     where
-        P: FnMut(&Box<Lunchable>) -> bool,
+        P: FnMut(&T) -> bool,
     {
-        self.lunchables
+        self.search_items
             .iter()
             .enumerate()
-            .filter(|&(_, ref lunchable)| predicate(lunchable))
+            .filter(|&(_, ref search_item)| predicate(search_item.as_ref()))
+            .map(|(n, _)| n)
             .next()
     }
 }
@@ -50,6 +51,7 @@ mod tests {
     #[test]
     fn test() {
         // TODO test keyword search
+
         assert!(false)
     }
 }
