@@ -9,10 +9,13 @@ pub use self::errors::*;
 pub use std::result::Result as StdResult;
 
 mod search;
-pub use self::search::Search;
+pub use self::search::{Search, SearchTerms};
 
 mod launch;
 pub use self::launch::Launch;
+
+pub use self::env::Lunchable;
+pub use self::env::BasicLunchable;
 
 enum Io {
     Suppress,

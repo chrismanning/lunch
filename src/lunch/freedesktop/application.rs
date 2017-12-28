@@ -1,12 +1,13 @@
 use std::path::{Path, PathBuf};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::convert::TryFrom;
+use std::rc::Rc;
 
 use super::desktopfile::DesktopFile;
 use super::entry::*;
 use lunch::errors::*;
 use lunch::exec::{Exec, FieldCode};
-use lunch::{Io, Launch, Options, Search};
+use lunch::{BasicLunchable, Io, Launch, Lunchable, Options, Search};
 use lunch::search::SearchTerms;
 
 #[derive(Debug)]
@@ -22,13 +23,6 @@ pub struct Application {
     pub actions: Vec<Action>,
 }
 
-#[derive(Debug)]
-pub struct Action {
-    name: String,
-    icon: Option<String>,
-    exec: Exec,
-}
-
 impl Application {
     fn can_exec(&self) -> bool {
         if let Some(ref try_exec) = self.try_exec {
@@ -36,6 +30,20 @@ impl Application {
         } else {
             true
         }
+    }
+
+    pub fn to_lunchables(self) -> Vec<Box<Lunchable>> {
+        let application = Box::new(self);
+        let mut actions = application.actions.clone().into_iter().map(|action| {
+            Box::new(BasicLunchable {
+                launch: Rc::new(action),
+                display: Rc::new(ActionDisplay::new()),
+                search: Rc::new(ActionSearch::new()),
+            }) as Box<Lunchable>
+        }).collect();
+        let mut lunchables: Vec<Box<Lunchable>> = vec![application];
+        lunchables.append(&mut actions);
+        lunchables
     }
 }
 
@@ -96,10 +104,9 @@ impl Search for Application {
         }
         use std::borrow::{Borrow, Cow};
         SearchTerms {
-            terms: self.keywords
-                .iter()
-                .map(Borrow::borrow)
-                .map(Cow::Borrowed)
+            terms: terms
+                .into_iter()
+                .map(Cow::Owned)
                 .collect(),
             keywords: self.keywords
                 .iter()
@@ -107,18 +114,6 @@ impl Search for Application {
                 .map(Cow::Borrowed)
                 .collect(),
         }
-    }
-}
-
-impl TryFrom<DesktopAction> for Action {
-    type Error = Error;
-
-    fn try_from(desktop_action: DesktopAction) -> Result<Action> {
-        Ok(Action {
-            name: desktop_action.name,
-            exec: desktop_action.exec.parse()?,
-            icon: desktop_action.icon,
-        })
     }
 }
 
@@ -144,5 +139,65 @@ impl TryFrom<DesktopFile> for Application {
                 .map(TryFrom::try_from)
                 .collect::<Result<_>>()?,
         })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Action {
+    name: String,
+    icon: Option<String>,
+    exec: Exec,
+}
+
+impl TryFrom<DesktopAction> for Action {
+    type Error = Error;
+
+    fn try_from(desktop_action: DesktopAction) -> Result<Action> {
+        Ok(Action {
+            name: desktop_action.name,
+            exec: desktop_action.exec.parse()?,
+            icon: desktop_action.icon,
+        })
+    }
+}
+
+impl Launch for Action {
+    fn launch(&self, args: Vec<String>) -> Error {
+        unimplemented!()
+    }
+}
+
+struct ActionDisplay {
+
+}
+
+impl ActionDisplay {
+    fn new() -> Self {
+        unimplemented!()
+    }
+}
+
+impl Display for ActionDisplay {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        unimplemented!()
+    }
+}
+
+struct ActionSearch {
+
+}
+
+impl ActionSearch {
+    fn new() -> Self {
+        unimplemented!()
+    }
+}
+
+impl Search for ActionSearch {
+    fn search_terms(&self) -> SearchTerms {
+        SearchTerms {
+            terms: vec![],
+            keywords: vec![],
+        }
     }
 }
