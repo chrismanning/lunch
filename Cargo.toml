@@ -4,7 +4,7 @@ name = "lunch"
 version = "0.1.0"
 
 [dependencies]
-clap = "2.27"
+clap = "2.29"
 derive_builder = "0.5"
 env_logger = "0.4"
 error-chain = "0.11"

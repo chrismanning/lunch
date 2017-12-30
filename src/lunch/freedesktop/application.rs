@@ -121,16 +121,19 @@ impl TryFrom<DesktopFile> for Application {
     type Error = Error;
 
     fn try_from(desktop_file: DesktopFile) -> Result<Application> {
-        let exec = desktop_file.desktop_entry.exec;
+        debug!("Processing desktop entry '{}'", desktop_file.desktop_entry.name);
+        let exec: &String = &desktop_file.desktop_entry.exec.unwrap_or("".to_owned());
+        if exec.trim().is_empty() {
+            return Err(ErrorKind::InvalidCommandLine(exec.clone()).into());
+        }
+
         Ok(Application {
             name: desktop_file.desktop_entry.name,
             icon: desktop_file.desktop_entry.icon,
             comment: desktop_file.desktop_entry.comment,
             keywords: desktop_file.desktop_entry.keywords,
-            exec: exec.clone()
-                .ok_or(ErrorKind::InvalidCommandLine("".into()).into())
-                .and_then(|s| s.parse())?,
-            field_code: exec.and_then(|exec| FieldCode::extract_field_code(&exec)),
+            field_code: FieldCode::extract_field_code(&exec),
+            exec: exec.parse()?,
             try_exec: desktop_file.desktop_entry.try_exec.map(From::from),
             path: desktop_file.desktop_entry.path.map(From::from),
             actions: desktop_file
