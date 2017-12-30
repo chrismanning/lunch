@@ -26,6 +26,7 @@ impl FreeDesktopEnv {
         let current_desktop = current_desktop()?;
         let desktop_files: Vec<_> = desktop_files
             .into_iter()
+            .filter(|desktop_file| !desktop_file.desktop_entry.no_display)
             .filter(|desktop_file| !desktop_file.desktop_entry.hidden)
             .filter(|desktop_file| {
                 desktop_file.desktop_entry.only_show_in.is_empty() ||
@@ -74,7 +75,7 @@ fn find_all_desktop_files() -> Result<Vec<PathBuf>> {
             None => false,
         })
         .map(|path| {
-            debug!("Found desktop file '{}'", path.as_path().display());
+            trace!("Found desktop file '{}'", path.as_path().display());
             path
         })
         .collect();
