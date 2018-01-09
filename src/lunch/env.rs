@@ -18,7 +18,7 @@ where
 }
 
 pub struct LunchEnv {
-    pub lunchables: Vec<Box<Lunchable>>,
+    pub lunchables: Vec<Rc<Lunchable>>,
 }
 
 impl LunchEnv {
@@ -26,9 +26,21 @@ impl LunchEnv {
         PlatformEnv::init_lunch()
     }
 
-    pub fn keyword(self, keyword: &str) -> Option<Box<Lunchable>> {
+    pub fn keyword(self, keyword: &str) -> Option<Rc<Lunchable>> {
+        info!("Searching for keyword '{}'", keyword);
         let k = Keyword::<_, Lunchable>::new(self.lunchables);
         k.search(keyword)
+    }
+
+    pub fn search<Terms, S>(self, terms: Terms) -> Option<Box<Lunchable>>
+    where
+        Terms: Iterator<Item=S>,
+        S: AsRef<str>,
+    {
+        for term in terms {
+            info!("Searching for term '{}'", term.as_ref());
+        }
+        unimplemented!()
     }
 }
 

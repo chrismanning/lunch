@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::io::BufReader;
 use std::borrow::Cow;
-use std::convert::TryFrom;
+use std::rc::Rc;
 
 use xdg::BaseDirectories as XdgDirs;
 
@@ -44,13 +44,14 @@ impl FreeDesktopEnv {
                 )
             })
             .collect();
-        let applications: Vec<Application> = desktop_files
+        let applications = desktop_files
             .into_iter()
-            .map(TryFrom::try_from)
-            .collect::<Result<_>>()?;
+            .map(Application::from_desktop_file)
+            .map(|app_res| app_res.map(Rc::new))
+            .collect::<Result<Vec<_>>>()?;
         let lunchables = applications
             .into_iter()
-            .flat_map(|application| application.to_lunchables().into_iter())
+            .flat_map(|application| Application::to_lunchables(application).into_iter())
             .collect();
         Ok(LunchEnv {
             lunchables

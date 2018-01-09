@@ -12,7 +12,7 @@ use log::LogLevelFilter;
 use env_logger::LogBuilder;
 
 use lunch::errors::*;
-use lunch::env::LunchEnv;
+use lunch::env::{Lunchable, LunchEnv};
 
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -87,11 +87,17 @@ fn run() -> Result<()> {
     let env = LunchEnv::init()?;
 
     if let Some(keyword) = arg_matches.value_of("keyword") {
-        info!("Searching for keyword '{}'", keyword);
         if let Some(lunchable) = env.keyword(keyword) {
             return Err(lunchable.launch(vec![]));
+        } else {
+            return Err(ErrorKind::NoMatchFound(keyword.to_owned()).into());
         }
+    } else if let Some(terms) = arg_matches.values_of_lossy("terms") {
+        if let Some(lunchable) = env.search(terms.iter()) {
+            return Err(lunchable.launch(vec![]));
+        }
+        return Err(ErrorKind::NoMatchFound(terms.join(" ")).into());
+    } else {
+        unreachable!()
     }
-
-    unimplemented!()
 }
