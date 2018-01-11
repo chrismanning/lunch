@@ -13,48 +13,44 @@ use super::locale::Locale;
 use super::desktopfile::DesktopFile;
 use super::application::Application;
 
-pub struct FreeDesktopEnv;
+pub fn init_lunch() -> Result<LunchEnv> {
+    let desktop_files = find_all_desktop_files()?;
+    let locale = Locale::from_env()?;
+    let mut desktop_files = parse_files(desktop_files.into_iter(), &locale);
+    desktop_files.sort_by_key(|desktop_file| desktop_file.desktop_entry.name.clone());
+    desktop_files.dedup_by_key(|desktop_file| desktop_file.desktop_entry.name.clone());
 
-impl FreeDesktopEnv {
-    pub fn init_lunch<'a>() -> Result<LunchEnv> {
-        let desktop_files = find_all_desktop_files()?;
-        let locale = Locale::from_env()?;
-        let mut desktop_files = parse_files(desktop_files.into_iter(), &locale);
-        desktop_files.sort_by_key(|desktop_file| desktop_file.desktop_entry.name.clone());
-        desktop_files.dedup_by_key(|desktop_file| desktop_file.desktop_entry.name.clone());
-
-        let current_desktop = current_desktop()?;
-        let desktop_files: Vec<_> = desktop_files
-            .into_iter()
-            .filter(|desktop_file| !desktop_file.desktop_entry.no_display)
-            .filter(|desktop_file| !desktop_file.desktop_entry.hidden)
-            .filter(|desktop_file| {
-                desktop_file.desktop_entry.only_show_in.is_empty()
-                    || desktop_file
-                        .desktop_entry
-                        .only_show_in
-                        .iter()
-                        .any(|desktop| desktop == &current_desktop)
-            })
-            .filter(|desktop_file| {
-                desktop_file
+    let current_desktop = current_desktop()?;
+    let desktop_files: Vec<_> = desktop_files
+        .into_iter()
+        .filter(|desktop_file| !desktop_file.desktop_entry.no_display)
+        .filter(|desktop_file| !desktop_file.desktop_entry.hidden)
+        .filter(|desktop_file| {
+            desktop_file.desktop_entry.only_show_in.is_empty()
+                || desktop_file
                     .desktop_entry
-                    .not_show_in
+                    .only_show_in
                     .iter()
-                    .all(|desktop| desktop != &current_desktop)
-            })
-            .collect();
-        let applications = desktop_files
-            .into_iter()
-            .map(Application::from_desktop_file)
-            .map(|app_res| app_res.map(Rc::new))
-            .collect::<Result<Vec<_>>>()?;
-        let lunchables = applications
-            .into_iter()
-            .flat_map(|application| Application::to_lunchables(application).into_iter())
-            .collect();
-        Ok(LunchEnv { lunchables })
-    }
+                    .any(|desktop| desktop == &current_desktop)
+        })
+        .filter(|desktop_file| {
+            desktop_file
+                .desktop_entry
+                .not_show_in
+                .iter()
+                .all(|desktop| desktop != &current_desktop)
+        })
+        .collect();
+    let applications = desktop_files
+        .into_iter()
+        .map(Application::from_desktop_file)
+        .map(|app_res| app_res.map(Rc::new))
+        .collect::<Result<Vec<_>>>()?;
+    let lunchables = applications
+        .into_iter()
+        .flat_map(|application| Application::to_lunchables(application).into_iter())
+        .collect();
+    Ok(LunchEnv { lunchables })
 }
 
 pub fn current_desktop<'a>() -> Result<Cow<'a, str>> {

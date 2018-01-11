@@ -7,7 +7,7 @@ use super::Launch;
 use super::{Search, SearchTerms};
 use super::keyword::Keyword;
 
-use super::freedesktop::env::FreeDesktopEnv as PlatformEnv;
+use super::freedesktop::env::init_lunch;
 
 pub trait Lunchable: Launch + Search + Display {}
 
@@ -23,7 +23,7 @@ pub struct LunchEnv {
 
 impl LunchEnv {
     pub fn init() -> Result<Self> {
-        PlatformEnv::init_lunch()
+        init_lunch()
     }
 
     pub fn keyword(self, keyword: &str) -> Option<Rc<Lunchable>> {
