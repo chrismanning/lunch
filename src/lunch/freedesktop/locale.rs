@@ -114,11 +114,21 @@ mod from_env_tests {
 
     #[test]
     fn from_env_err() {
-        let old = ::std::env::var("LC_ALL");
+        let old_lc_all = ::std::env::var("LC_ALL");
+        let old_lc_messages = ::std::env::var("LC_MESSAGES");
+        let old_lang = ::std::env::var("LANG");
         ::std::env::set_var("LC_ALL", "_GB.UTF-8");
+        ::std::env::set_var("LC_MESSAGE", "_GB.UTF-8");
+        ::std::env::set_var("LANG", "_GB.UTF-8");
         assert!(Locale::from_env().is_err());
-        if let Ok(var) = old {
+        if let Ok(var) = old_lc_all {
             ::std::env::set_var("LC_ALL", var);
+        }
+        if let Ok(var) = old_lc_messages {
+            ::std::env::set_var("LC_MESSAGES", var);
+        }
+        if let Ok(var) = old_lang {
+            ::std::env::set_var("LANG", var);
         }
     }
 
