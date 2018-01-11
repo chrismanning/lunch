@@ -12,7 +12,7 @@ use log::LogLevelFilter;
 use env_logger::LogBuilder;
 
 use lunch::errors::*;
-use lunch::env::{Lunchable, LunchEnv};
+use lunch::env::{LunchEnv, Lunchable};
 
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const APP_NAME: &str = env!("CARGO_PKG_NAME");
@@ -46,30 +46,34 @@ fn run() -> Result<()> {
         .version(VERSION)
         .about(DESCRIPTION)
         .author(AUTHORS)
-        .arg(Arg::with_name("keyword")
-            .short("k")
-            .long("keyword")
-            .conflicts_with("terms")
-            .value_name("KEYWORD")
-            .takes_value(true)
-            .help("Search by keyword")
+        .arg(
+            Arg::with_name("keyword")
+                .short("k")
+                .long("keyword")
+                .conflicts_with("terms")
+                .value_name("KEYWORD")
+                .takes_value(true)
+                .help("Search by keyword"),
         )
-        .arg(Arg::with_name("terms")
-            .value_name("TERMS")
-            .help("General search terms")
-            .conflicts_with("keyword")
-            .multiple(true)
-            .required(true)
+        .arg(
+            Arg::with_name("terms")
+                .value_name("TERMS")
+                .help("General search terms")
+                .conflicts_with("keyword")
+                .multiple(true)
+                .required(true),
         )
-        .arg(Arg::with_name("debug")
-            .short("d")
-            .long("debug")
-            .help("Enable debug logging output")
+        .arg(
+            Arg::with_name("debug")
+                .short("d")
+                .long("debug")
+                .help("Enable debug logging output"),
         )
-        .arg(Arg::with_name("trace")
-            .short("t")
-            .long("trace")
-            .help("Enable trace logging output")
+        .arg(
+            Arg::with_name("trace")
+                .short("t")
+                .long("trace")
+                .help("Enable trace logging output"),
         )
         .get_matches();
 
@@ -80,9 +84,9 @@ fn run() -> Result<()> {
         log_builder.filter(None, LogLevelFilter::Trace);
     }
 
-    log_builder.init().chain_err(
-        || "Error initialising logging",
-    )?;
+    log_builder
+        .init()
+        .chain_err(|| "Error initialising logging")?;
 
     let env = LunchEnv::init()?;
 

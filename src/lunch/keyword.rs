@@ -15,28 +15,32 @@ where
     pub fn new(search_items: Vec<T>) -> Self {
         Keyword {
             search_items,
-            phantom: ::std::marker::PhantomData
+            phantom: ::std::marker::PhantomData,
         }
     }
 
     pub fn search(mut self, keyword: &str) -> Option<T> {
         if let Some(n) = self.find(|ref search_item: &T| {
             let search_item: &T = search_item;
-            search_item.borrow().search_terms().keywords.iter().any(
-                |k| k == keyword,
-            )
-        })
-        {
+            search_item
+                .borrow()
+                .search_terms()
+                .keywords
+                .iter()
+                .any(|k| k == keyword)
+        }) {
             return Some(self.search_items.swap_remove(n));
         }
         if keyword.len() > 3 {
             if let Some(n) = self.find(|ref search_item| {
                 let search_item: &T = search_item;
-                search_item.borrow().search_terms().keywords.iter().any(|k| {
-                    k.starts_with(keyword)
-                })
-            })
-            {
+                search_item
+                    .borrow()
+                    .search_terms()
+                    .keywords
+                    .iter()
+                    .any(|k| k.starts_with(keyword))
+            }) {
                 return Some(self.search_items.swap_remove(n));
             }
         }
@@ -88,32 +92,36 @@ mod tests {
 
     #[test]
     fn keyword_match() {
-        let keyword_searcher =
-            Keyword::<Box<DummySearch>, DummySearch>::new(vec![Box::new(DummySearch::new(vec![], vec!["keyword"]))]);
+        let keyword_searcher = Keyword::<Box<DummySearch>, DummySearch>::new(vec![
+            Box::new(DummySearch::new(vec![], vec!["keyword"])),
+        ]);
 
         assert!(keyword_searcher.search("keyword").is_some());
     }
 
     #[test]
     fn keyword_contains() {
-        let keyword_searcher =
-            Keyword::<Box<DummySearch>, DummySearch>::new(vec![Box::new(DummySearch::new(vec![], vec!["keyword"]))]);
+        let keyword_searcher = Keyword::<Box<DummySearch>, DummySearch>::new(vec![
+            Box::new(DummySearch::new(vec![], vec!["keyword"])),
+        ]);
 
         assert!(keyword_searcher.search("keywor").is_some());
     }
 
     #[test]
     fn keyword_no_match() {
-        let keyword_searcher =
-            Keyword::<Box<DummySearch>, DummySearch>::new(vec![Box::new(DummySearch::new(vec![], vec!["keyword"]))]);
+        let keyword_searcher = Keyword::<Box<DummySearch>, DummySearch>::new(vec![
+            Box::new(DummySearch::new(vec![], vec!["keyword"])),
+        ]);
 
         assert!(keyword_searcher.search("keyword1").is_none());
     }
 
     #[test]
     fn keyword_too_short() {
-        let keyword_searcher =
-            Keyword::<Box<DummySearch>, DummySearch>::new(vec![Box::new(DummySearch::new(vec![], vec!["keyword"]))]);
+        let keyword_searcher = Keyword::<Box<DummySearch>, DummySearch>::new(vec![
+            Box::new(DummySearch::new(vec![], vec!["keyword"])),
+        ]);
 
         assert!(keyword_searcher.search("ke").is_none());
     }

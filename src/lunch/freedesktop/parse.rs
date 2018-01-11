@@ -72,9 +72,9 @@ impl LocalisedGroup {
             .map(|(key, mut localised_value)| {
                 (
                     key,
-                    localised_value.remove(locale).or_else(|| {
-                        localised_value.remove(&Locale::default())
-                    }),
+                    localised_value
+                        .remove(locale)
+                        .or_else(|| localised_value.remove(&Locale::default())),
                 )
             })
             .filter_map(|(key, value)| value.map(|value| (key, value)))
@@ -130,10 +130,8 @@ impl LocalisedValue {
 
     fn remove(&mut self, locale: &Locale) -> Option<String> {
         let idx = self.get_idx(locale);
-        idx.map(|idx| self.localised_value.remove(idx)).map(|(_,
-          value)| {
-            value
-        })
+        idx.map(|idx| self.localised_value.remove(idx))
+            .map(|(_, value)| value)
     }
 
     fn get_idx(&self, locale: &Locale) -> Option<usize> {
@@ -142,9 +140,7 @@ impl LocalisedValue {
             .enumerate()
             .map(|(idx, &(ref key, _))| (idx, key))
             .max_by_key(|&(_, locale_key)| locale.match_level(locale_key))
-            .and_then(|(idx, locale_key)| {
-                locale.match_level(locale_key).and(Some(idx))
-            })
+            .and_then(|(idx, locale_key)| locale.match_level(locale_key).and(Some(idx)))
     }
 }
 
@@ -166,8 +162,9 @@ mod localised_value_tests {
 
     #[test]
     fn get_same_lang() {
-        let mut localised_value =
-            LocalisedValue { localised_value: vec![("en".parse().unwrap(), "en".to_owned())] };
+        let mut localised_value = LocalisedValue {
+            localised_value: vec![("en".parse().unwrap(), "en".to_owned())],
+        };
         let value = localised_value.remove(&"en_GB".parse().unwrap()).unwrap();
         assert_eq!(value, "en");
     }
@@ -186,8 +183,9 @@ mod localised_value_tests {
 
     #[test]
     fn get_too_specific() {
-        let mut localised_value =
-            LocalisedValue { localised_value: vec![("en".parse().unwrap(), "en".to_owned())] };
+        let mut localised_value = LocalisedValue {
+            localised_value: vec![("en".parse().unwrap(), "en".to_owned())],
+        };
         let value = localised_value.remove(&"en_GB".parse().unwrap()).unwrap();
         assert_eq!(value, "en");
     }
@@ -233,11 +231,10 @@ where
     let mut localised_group = LocalisedGroup::default();
     for (key, value) in lines {
         let (key, locale) = parse_key(key);
-        let mut localised_value = localised_group.group.entry(key.to_owned()).or_insert_with(
-            || {
-                LocalisedValue::default()
-            },
-        );
+        let mut localised_value = localised_group
+            .group
+            .entry(key.to_owned())
+            .or_insert_with(|| LocalisedValue::default());
         localised_value.insert(locale, value.to_owned());
     }
     Some((header, localised_group))
@@ -354,11 +351,13 @@ mod parse_header_tests {
 fn parse_key(line: &str) -> (&str, Locale) {
     line.rfind(']')
         .and_then(|j| line[0..j].rfind('[').map(|i| (i, j)))
-        .and_then(|(i, j)| if j - i > 1 {
-            let (key, locale) = (&line[0..i], &line[i + 1..j]);
-            locale.parse::<Locale>().ok().map(|locale| (key, locale))
-        } else {
-            Some((&line[0..i], Locale::default()))
+        .and_then(|(i, j)| {
+            if j - i > 1 {
+                let (key, locale) = (&line[0..i], &line[i + 1..j]);
+                locale.parse::<Locale>().ok().map(|locale| (key, locale))
+            } else {
+                Some((&line[0..i], Locale::default()))
+            }
         })
         .unwrap_or_else(|| (line, Locale::default()))
 }
@@ -390,9 +389,9 @@ mod parse_key_tests {
 }
 
 fn split_first(delim: char, s: &str) -> Option<(&str, &str)> {
-    s.find(delim).map(|i| s.split_at(i)).map(|(name, value)| {
-        (name.trim(), value[1..value.len()].trim())
-    })
+    s.find(delim)
+        .map(|i| s.split_at(i))
+        .map(|(name, value)| (name.trim(), value[1..value.len()].trim()))
 }
 
 #[cfg(test)]

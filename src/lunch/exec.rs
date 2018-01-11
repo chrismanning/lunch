@@ -275,11 +275,9 @@ impl FieldCode {
             vec![exec.get_command_line(args)]
         } else {
             match *self {
-                SingleFile | SingleUrl => {
-                    args.into_iter()
-                        .map(|arg| exec.get_command_line(vec![arg]))
-                        .collect()
-                }
+                SingleFile | SingleUrl => args.into_iter()
+                    .map(|arg| exec.get_command_line(vec![arg]))
+                    .collect(),
                 MultipleFiles | MultipleUrls => vec![exec.get_command_line(args)],
             }
         }

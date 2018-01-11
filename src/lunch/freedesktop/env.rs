@@ -29,19 +29,19 @@ impl FreeDesktopEnv {
             .filter(|desktop_file| !desktop_file.desktop_entry.no_display)
             .filter(|desktop_file| !desktop_file.desktop_entry.hidden)
             .filter(|desktop_file| {
-                desktop_file.desktop_entry.only_show_in.is_empty() ||
-                    desktop_file.desktop_entry.only_show_in.iter().any(
-                        |desktop| {
-                            desktop == &current_desktop
-                        },
-                    )
+                desktop_file.desktop_entry.only_show_in.is_empty()
+                    || desktop_file
+                        .desktop_entry
+                        .only_show_in
+                        .iter()
+                        .any(|desktop| desktop == &current_desktop)
             })
             .filter(|desktop_file| {
-                desktop_file.desktop_entry.not_show_in.iter().all(
-                    |desktop| {
-                        desktop != &current_desktop
-                    },
-                )
+                desktop_file
+                    .desktop_entry
+                    .not_show_in
+                    .iter()
+                    .all(|desktop| desktop != &current_desktop)
             })
             .collect();
         let applications = desktop_files
@@ -53,17 +53,15 @@ impl FreeDesktopEnv {
             .into_iter()
             .flat_map(|application| Application::to_lunchables(application).into_iter())
             .collect();
-        Ok(LunchEnv {
-            lunchables
-        })
+        Ok(LunchEnv { lunchables })
     }
 }
 
 pub fn current_desktop<'a>() -> Result<Cow<'a, str>> {
     let xdg_current_desktop = ::std::env::var("XDG_CURRENT_DESKTOP");
-    xdg_current_desktop.map(Cow::Owned).chain_err(|| {
-        ErrorKind::NotDesktopEnvironment
-    })
+    xdg_current_desktop
+        .map(Cow::Owned)
+        .chain_err(|| ErrorKind::NotDesktopEnvironment)
 }
 
 fn find_all_desktop_files() -> Result<Vec<PathBuf>> {

@@ -29,10 +29,13 @@ pub struct ApplicationData {
 
 impl Application {
     pub fn from_desktop_file(desktop_file: DesktopFile) -> Result<Application> {
-        debug!("Processing desktop entry '{}'", desktop_file.desktop_entry.name);
-        let exec: &String = &desktop_file.desktop_entry.exec.unwrap_or("".to_owned());
+        debug!(
+            "Processing desktop entry '{}'",
+            desktop_file.desktop_entry.name
+        );
+        let exec = desktop_file.desktop_entry.exec.unwrap_or("".to_owned());
         if exec.trim().is_empty() {
-            return Err(ErrorKind::InvalidCommandLine(exec.clone()).into());
+            return Err(ErrorKind::InvalidCommandLine(exec).into());
         }
 
         let app_data = Rc::new(ApplicationData {
@@ -50,27 +53,71 @@ impl Application {
             .into_iter()
             .map(|desktop_action| Action::from_desktop_action(desktop_action, app_data.clone()))
             .collect::<Result<_>>()?;
-        Ok(Application {
-            app_data,
-            actions
-        })
+        Ok(Application { app_data, actions })
     }
 
     fn can_exec(&self) -> bool {
-        if let Some(ref try_exec) = self.app_data.try_exec {
-            try_exec.exists()
-        } else {
-            true
-        }
+        self.app_data
+            .try_exec
+            .as_ref()
+            .map(|try_exec| can_exec(try_exec.as_path()))
+            .unwrap_or_else(|| true)
     }
 
     pub fn to_lunchables(application: Rc<Application>) -> Vec<Rc<Lunchable>> {
-        let mut actions = application.actions.clone().into_iter().map(|action| {
-            action as Rc<Lunchable>
-        }).collect();
+        let mut actions = application
+            .actions
+            .clone()
+            .into_iter()
+            .map(|action| action as Rc<Lunchable>)
+            .collect();
         let mut lunchables: Vec<Rc<Lunchable>> = vec![application];
         lunchables.append(&mut actions);
         lunchables
+    }
+}
+
+fn can_exec(try_exec: &Path) -> bool {
+    if try_exec.is_absolute() {
+        try_exec.exists()
+    } else if let Some(paths) = ::std::env::var_os("PATH") {
+        for path in ::std::env::split_paths(&paths) {
+            debug!("Looking for {} in {}", try_exec.display(), path.display());
+            if path.is_absolute() && path.exists() {
+                let path = path.join(try_exec);
+                if path.exists() {
+                    return true;
+                }
+            }
+        }
+        false
+    } else {
+        false
+    }
+}
+
+#[cfg(test)]
+mod can_exec_tests {
+    use super::*;
+
+    #[test]
+    fn test_relative() {
+        assert!(can_exec(Path::new("echo")));
+    }
+
+    #[test]
+    fn test_nonexistant() {
+        assert!(!can_exec(Path::new("mdi309r29rj298f93d")));
+    }
+
+    #[test]
+    fn test_absolute() {
+        use tempdir::TempDir;
+
+        let tmp_dir = TempDir::new("can_exec").unwrap();
+        let path = tmp_dir.path().join("echo");
+
+        assert!(!can_exec(&path));
     }
 }
 
@@ -131,11 +178,9 @@ impl Search for Application {
         }
         use std::borrow::{Borrow, Cow};
         SearchTerms {
-            terms: terms
-                .into_iter()
-                .map(Cow::Owned)
-                .collect(),
-            keywords: self.app_data.keywords
+            terms: terms.into_iter().map(Cow::Owned).collect(),
+            keywords: self.app_data
+                .keywords
                 .iter()
                 .map(Borrow::borrow)
                 .map(Cow::Borrowed)
@@ -153,12 +198,15 @@ pub struct Action {
 }
 
 impl Action {
-    fn from_desktop_action(desktop_action: DesktopAction, application: Rc<ApplicationData>) -> Result<Rc<Action>> {
+    fn from_desktop_action(
+        desktop_action: DesktopAction,
+        application: Rc<ApplicationData>,
+    ) -> Result<Rc<Action>> {
         Ok(Rc::new(Action {
             name: desktop_action.name,
             exec: desktop_action.exec.parse()?,
             icon: desktop_action.icon,
-            application
+            application,
         }))
     }
 }

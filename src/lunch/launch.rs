@@ -35,9 +35,9 @@ fn init_cmd(cmd_line: CmdLine, work_dir: Option<&Path>, opt: &Options) -> Comman
     }
     match opt.io {
         Io::Suppress => {
-            cmd.stdout(Stdio::null()).stderr(Stdio::null()).stdin(
-                Stdio::null(),
-            );
+            cmd.stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .stdin(Stdio::null());
         }
         Io::Inherit => {
             cmd.stdout(Stdio::inherit())

@@ -34,7 +34,7 @@ impl LunchEnv {
 
     pub fn search<Terms, S>(self, terms: Terms) -> Option<Box<Lunchable>>
     where
-        Terms: Iterator<Item=S>,
+        Terms: Iterator<Item = S>,
         S: AsRef<str>,
     {
         for term in terms {
@@ -50,9 +50,7 @@ pub struct BasicLunchable {
     pub display: Rc<Display>,
 }
 
-impl BasicLunchable {
-
-}
+impl BasicLunchable {}
 
 impl Launch for BasicLunchable {
     fn launch(&self, args: Vec<String>) -> Error {

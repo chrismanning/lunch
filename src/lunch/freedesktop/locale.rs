@@ -19,9 +19,8 @@ impl FromStr for Locale {
         let (modifier, len) = find_after(s, '@');
         let (encoding, len) = find_after(&s[0..len], '.');
         let (country, len) = find_after(&s[0..len], '_');
-        let lang = filter_empty(&s[0..len]).ok_or_else::<Self::Err, _>(|| {
-            ErrorKind::InvalidLocale(s.to_owned()).into()
-        })?;
+        let lang = filter_empty(&s[0..len])
+            .ok_or_else::<Self::Err, _>(|| ErrorKind::InvalidLocale(s.to_owned()).into())?;
 
         Ok(Locale {
             lang: lang.to_string(),
@@ -39,7 +38,11 @@ fn find_after(s: &str, after_pat: char) -> (Option<&str>, usize) {
 }
 
 fn filter_empty(s: &str) -> Option<&str> {
-    if s.is_empty() { None } else { Some(s) }
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone, Copy)]
@@ -69,21 +72,20 @@ impl Locale {
 
     pub fn match_level(&self, b: &Self) -> Option<MatchLevel> {
         use self::MatchLevel::*;
-        if (!self.modifier.is_some() && b.modifier.is_some()) ||
-            (!self.country.is_some() && b.country.is_some())
+        if (!self.modifier.is_some() && b.modifier.is_some())
+            || (!self.country.is_some() && b.country.is_some())
         {
             None
-        } else if self.lang == b.lang && self.country.is_some() && self.country == b.country &&
-                   self.modifier.is_some() &&
-                   self.modifier == b.modifier
+        } else if self.lang == b.lang && self.country.is_some() && self.country == b.country
+            && self.modifier.is_some() && self.modifier == b.modifier
         {
             Some(LangCountryModifier)
-        } else if self.lang == b.lang && self.country.is_some() && self.country == b.country &&
-                   b.modifier.is_none()
+        } else if self.lang == b.lang && self.country.is_some() && self.country == b.country
+            && b.modifier.is_none()
         {
             Some(LangCountry)
-        } else if self.lang == b.lang && self.modifier.is_some() &&
-                   self.modifier == b.modifier && b.country.is_none()
+        } else if self.lang == b.lang && self.modifier.is_some() && self.modifier == b.modifier
+            && b.country.is_none()
         {
             Some(LangModifier)
         } else if self.lang == b.lang {
@@ -134,8 +136,7 @@ mod from_env_tests {
 
     #[test]
     fn from_env_default() {
-        let old =
-            hashmap!{
+        let old = hashmap!{
             "LC_ALL" => ::std::env::var("LC_ALL"),
             "LC_MESSAGES" => ::std::env::var("LC_MESSAGES"),
             "LANG" => ::std::env::var("LANG"),

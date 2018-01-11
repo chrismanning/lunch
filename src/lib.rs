@@ -12,6 +12,9 @@ extern crate error_chain;
 extern crate log;
 extern crate xdg;
 
+#[cfg(test)]
+extern crate tempdir;
+
 #[macro_use]
 extern crate maplit;
 
