@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::rc::Rc;
+use std::convert::TryFrom;
 
 use super::desktopfile::DesktopFile;
 use super::entry::*;
@@ -27,8 +28,10 @@ pub struct ApplicationData {
     pub path: Option<PathBuf>,
 }
 
-impl Application {
-    pub fn from_desktop_file(desktop_file: DesktopFile) -> Result<Application> {
+impl TryFrom<DesktopFile> for Application {
+    type Error = Error;
+
+    fn try_from(desktop_file: DesktopFile) -> Result<Self> {
         debug!(
             "Processing desktop entry '{}'",
             desktop_file.desktop_entry.name
@@ -55,7 +58,9 @@ impl Application {
             .collect::<Result<_>>()?;
         Ok(Application { app_data, actions })
     }
+}
 
+impl Application {
     fn can_exec(&self) -> bool {
         self.app_data
             .try_exec

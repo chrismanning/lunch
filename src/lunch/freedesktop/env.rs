@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::io::BufReader;
 use std::borrow::Cow;
 use std::rc::Rc;
+use std::convert::TryFrom;
 
 use xdg::BaseDirectories as XdgDirs;
 
@@ -43,7 +44,7 @@ pub fn init_lunch() -> Result<LunchEnv> {
         .collect();
     let applications = desktop_files
         .into_iter()
-        .map(Application::from_desktop_file)
+        .map(TryFrom::try_from)
         .map(|app_res| app_res.map(Rc::new))
         .collect::<Result<Vec<_>>>()?;
     let lunchables = applications
