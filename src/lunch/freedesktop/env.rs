@@ -49,6 +49,7 @@ pub fn init_lunch() -> Result<LunchEnv> {
         .collect::<Result<Vec<_>>>()?;
     let lunchables = applications
         .into_iter()
+        .filter(|application| Application::can_exec(application))
         .flat_map(|application| Application::to_lunchables(application).into_iter())
         .collect();
     Ok(LunchEnv { lunchables })

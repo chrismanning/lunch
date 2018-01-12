@@ -61,7 +61,7 @@ impl TryFrom<DesktopFile> for Application {
 }
 
 impl Application {
-    fn can_exec(&self) -> bool {
+    pub fn can_exec(&self) -> bool {
         self.app_data
             .try_exec
             .as_ref()
