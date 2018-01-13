@@ -8,7 +8,7 @@ use super::locale::Locale;
 use super::parse::parse_desktop_groups;
 use super::entry::*;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct DesktopFile {
     pub desktop_entry: DesktopEntry,
     pub actions: Vec<DesktopAction>,
@@ -50,22 +50,44 @@ impl DesktopFile {
                 "Comment" => builder.comment(value),
                 "Icon" => builder.icon(value),
                 "Hidden" => builder.hidden(value.parse()?),
-                "OnlyShowIn" => builder
-                    .only_show_in(value.split(';').map(|keyword| keyword.to_owned()).collect()),
-                "NotShowIn" => builder
-                    .not_show_in(value.split(';').map(|keyword| keyword.to_owned()).collect()),
+                "OnlyShowIn" => builder.only_show_in(
+                    value
+                        .split(';')
+                        .filter(|val| !val.is_empty())
+                        .map(|keyword| keyword.to_owned())
+                        .collect(),
+                ),
+                "NotShowIn" => builder.not_show_in(
+                    value
+                        .split(';')
+                        .filter(|val| !val.is_empty())
+                        .map(|keyword| keyword.to_owned())
+                        .collect(),
+                ),
                 "TryExec" => builder.try_exec(value),
                 "Exec" => builder.exec(value),
                 "Path" => builder.path(PathBuf::from(value)),
-                "Actions" => {
-                    builder.actions(value.split(';').map(|keyword| keyword.to_owned()).collect())
-                }
-                "Categories" => {
-                    builder.categories(value.split(';').map(|keyword| keyword.to_owned()).collect())
-                }
-                "Keywords" => {
-                    builder.keywords(value.split(';').map(|keyword| keyword.to_owned()).collect())
-                }
+                "Actions" => builder.actions(
+                    value
+                        .split(';')
+                        .filter(|val| !val.is_empty())
+                        .map(|keyword| keyword.to_owned())
+                        .collect(),
+                ),
+                "Categories" => builder.categories(
+                    value
+                        .split(';')
+                        .filter(|val| !val.is_empty())
+                        .map(|keyword| keyword.to_owned())
+                        .collect(),
+                ),
+                "Keywords" => builder.keywords(
+                    value
+                        .split(';')
+                        .filter(|val| !val.is_empty())
+                        .map(|keyword| keyword.to_owned())
+                        .collect(),
+                ),
                 _ => &mut builder,
             };
         }
@@ -94,4 +116,89 @@ fn read_whole<R: BufRead>(mut reader: R) -> Result<String> {
     let mut string = String::new();
     reader.read_to_string(&mut string)?;
     Ok(string)
+}
+
+#[cfg(test)]
+mod read_tests {
+    use super::*;
+    use spectral::prelude::*;
+    use std::io::BufReader;
+
+    #[test]
+    fn test_all() {
+        let input = "[Desktop Entry]
+        Name=Some Desktop Application
+        GenericName=App
+        Type=Application
+        Exec=exec
+        Comment=comment
+        Icon=icon
+        Actions=test;
+        Categories=Utility;;
+        Keywords=word
+        Hidden=true
+        Path=/
+        NoDisplay=false
+        OnlyShowIn=A
+        NotShowIn=B
+
+        [Desktop Action test]
+        Name=Test
+        Exec=exec
+        ";
+        let locale = "C".parse().unwrap();
+
+        let desktop_file = DesktopFile::read(BufReader::new(input.as_bytes()), &locale);
+        assert_that(&desktop_file).is_ok().is_equal_to(DesktopFile {
+            desktop_entry: DesktopEntry {
+                entry_type: "Application".to_owned(),
+                name: "Some Desktop Application".to_owned(),
+                generic_name: Some("App".to_owned()),
+                no_display: false,
+                comment: Some("comment".to_owned()),
+                icon: Some("icon".to_owned()),
+                hidden: true,
+                only_show_in: vec!["A".to_owned()],
+                not_show_in: vec!["B".to_owned()],
+                try_exec: None,
+                exec: Some("exec".to_owned()),
+                path: Some(PathBuf::from("/")),
+                actions: vec!["test".to_owned()],
+                mime_type: vec![],
+                categories: vec!["Utility".to_owned()],
+                keywords: vec!["word".to_owned()],
+            },
+            actions: vec![
+                DesktopAction {
+                    name: "Test".to_owned(),
+                    exec: "exec".to_owned(),
+                    icon: None,
+                },
+            ],
+        });
+    }
+
+    #[test]
+    fn test_bad_bool() {
+        let input = "[Desktop Entry]
+        Name=Some Desktop Application
+        GenericName=App
+        Type=Application
+        Exec=exec
+        Comment=comment
+        Icon=icon
+        Actions=test;
+        Categories=Utility;;
+        Keywords=word
+        Hidden=trie
+
+        [Desktop Action test]
+        Name=Test
+        Exec=exec
+        ";
+        let locale = "C".parse().unwrap();
+        let desktop_file = DesktopFile::read(BufReader::new(input.as_bytes()), &locale);
+
+        assert_that(&desktop_file).is_err();
+    }
 }

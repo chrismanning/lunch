@@ -97,63 +97,6 @@ impl Locale {
 }
 
 #[cfg(test)]
-mod from_env_tests {
-    use super::*;
-
-    #[test]
-    fn from_env() {
-        let old = ::std::env::var("LC_ALL");
-        ::std::env::set_var("LC_ALL", "en_GB.UTF-8@mod");
-        let locale = Locale::from_env().unwrap();
-        assert_eq!(locale.lang, "en");
-        assert_eq!(locale.country, Some("GB".to_string()));
-        assert_eq!(locale.encoding, Some("UTF-8".to_string()));
-        assert_eq!(locale.modifier, Some("mod".to_string()));
-        if let Ok(var) = old {
-            ::std::env::set_var("LC_ALL", var);
-        }
-    }
-
-    #[test]
-    fn from_env_err() {
-        let old_lc_all = ::std::env::var("LC_ALL");
-        let old_lc_messages = ::std::env::var("LC_MESSAGES");
-        let old_lang = ::std::env::var("LANG");
-        ::std::env::set_var("LC_ALL", "_GB.UTF-8");
-        ::std::env::set_var("LC_MESSAGE", "_GB.UTF-8");
-        ::std::env::set_var("LANG", "_GB.UTF-8");
-        assert!(Locale::from_env().is_err());
-        if let Ok(var) = old_lc_all {
-            ::std::env::set_var("LC_ALL", var);
-        }
-        if let Ok(var) = old_lc_messages {
-            ::std::env::set_var("LC_MESSAGES", var);
-        }
-        if let Ok(var) = old_lang {
-            ::std::env::set_var("LANG", var);
-        }
-    }
-
-    #[test]
-    fn from_env_default() {
-        let old = hashmap!{
-            "LC_ALL" => ::std::env::var("LC_ALL"),
-            "LC_MESSAGES" => ::std::env::var("LC_MESSAGES"),
-            "LANG" => ::std::env::var("LANG"),
-        };
-        ::std::env::remove_var("LC_ALL");
-        ::std::env::remove_var("LC_MESSAGES");
-        ::std::env::remove_var("LANG");
-        assert_eq!(Locale::from_env().unwrap(), Locale::default());
-        for (var, val) in old {
-            if let Ok(val) = val {
-                ::std::env::set_var(var, val);
-            }
-        }
-    }
-}
-
-#[cfg(test)]
 mod from_str_tests {
     use super::*;
 

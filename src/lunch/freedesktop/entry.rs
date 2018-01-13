@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-#[derive(Debug, Default, Builder)]
+#[derive(Debug, Default, Builder, Eq, PartialEq)]
 pub struct DesktopEntry {
     #[builder(setter(into))] pub entry_type: String,
     #[builder(setter(into))] pub name: String,
@@ -20,7 +20,7 @@ pub struct DesktopEntry {
     #[builder(default = "vec![]")] pub keywords: Vec<String>,
 }
 
-#[derive(Debug, Default, Builder)]
+#[derive(Debug, Default, Builder, Eq, PartialEq)]
 pub struct DesktopAction {
     #[builder(setter(into))] pub name: String,
     #[builder(setter(into))] pub exec: String,

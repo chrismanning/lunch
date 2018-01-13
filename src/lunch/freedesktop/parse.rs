@@ -1,4 +1,7 @@
 use std::collections::HashMap;
+use std::iter::Peekable;
+
+use peeking_take_while::PeekableExt;
 
 use lunch::errors::*;
 use super::locale::Locale;
@@ -10,7 +13,7 @@ pub fn parse_desktop_groups(src: &str, locale: &Locale) -> Result<Groups> {
     let mut groups = Groups::new();
     let mut lines = src.lines().peekable();
     while lines.peek().is_some() {
-        if let Some((header, localised_group)) = parse_localised_group(&mut lines) {
+        if let Some((header, localised_group)) = parse_localised_desktop_group(&mut lines) {
             let group = localised_group.resolve_to_locale(locale);
             groups.insert(header, group);
         }
@@ -207,62 +210,78 @@ mod localised_value_tests {
     }
 }
 
-fn parse_localised_group<'a, LineIter>(lines: &mut LineIter) -> Option<(String, LocalisedGroup)>
+fn parse_localised_desktop_group<'a, LineIter>(
+    lines: &mut Peekable<LineIter>,
+) -> Option<(String, LocalisedGroup)>
 where
     LineIter: Iterator<Item = &'a str>,
 {
-    let mut lines = lines.map(|line| line.trim()).skip_while(move |line| {
-        !parse_header(line)
-            .as_ref()
-            .map(|header| header.starts_with("Desktop "))
-            .unwrap_or(false)
-    });
-    let header = if let Some(header) = lines.next().and_then(parse_header) {
+    let header = if let Some(header) = find_desktop_header(lines) {
         header
     } else {
+        error!("Could not parse header");
         return None;
     };
 
-    let lines = lines
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .take_while(|line| !line.starts_with('['))
-        .filter_map(|line| split_first('=', line))
-        .collect::<Vec<_>>();
     let mut localised_group = LocalisedGroup::default();
-    for (key, value) in lines {
-        let (key, locale) = parse_key(key);
-        let mut localised_value = localised_group
-            .group
-            .entry(key.to_owned())
-            .or_insert_with(|| LocalisedValue::default());
-        localised_value.insert(locale, value.to_owned());
-    }
+
+    lines
+        .peeking_take_while(|line| !line.trim().starts_with('['))
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter_map(|line| split_first('=', line))
+        .filter(|&(_, value)| !value.is_empty())
+        .for_each(|(key, value)| {
+            let (key, locale) = parse_key(key);
+            let localised_value = localised_group
+                .group
+                .entry(key.to_owned())
+                .or_insert_with(|| LocalisedValue::default());
+            localised_value.insert(locale, value.to_owned());
+        });
     Some((header, localised_group))
 }
 
+fn find_desktop_header<'a, LineIter>(lines: &mut LineIter) -> Option<String>
+where
+    LineIter: Iterator<Item = &'a str>,
+{
+    while let Some(line) = lines.next() {
+        if let Some(header) = parse_header(line) {
+            if header.starts_with("Desktop ") {
+                return Some(header);
+            }
+        }
+    }
+    None
+}
+
 #[cfg(test)]
-mod parse_localised_group_tests {
+mod parse_localised_desktop_group_tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn no_input() {
-        let mut lines = "".lines();
+        let mut lines = "".lines().peekable();
         lines.next();
-        let localised_group = parse_localised_group(&mut lines);
-        assert!(localised_group.is_none());
+        let localised_group = parse_localised_desktop_group(&mut lines);
+        assert_that(&localised_group).is_none();
     }
 
     #[test]
     fn no_group() {
-        let localised_group = parse_localised_group(&mut "".lines());
-        assert!(localised_group.is_none());
+        let localised_group = parse_localised_desktop_group(&mut "".lines().peekable());
+        assert_that(&localised_group).is_none();
     }
 
     #[test]
     fn header_only() {
         let input = "[Desktop group header]";
-        let localised_group = parse_localised_group(&mut input.lines());
-        assert_eq!(localised_group.unwrap().1, LocalisedGroup::default());
+        let localised_group = parse_localised_desktop_group(&mut input.lines().peekable());
+        assert_that(&localised_group)
+            .is_some()
+            .is_equal_to(("Desktop group header".to_owned(), LocalisedGroup::default()));
     }
 
     #[test]
@@ -272,52 +291,85 @@ mod parse_localised_group_tests {
         Key1=Value1
         Key1[en]=Value2
         Key2[C]=Value3";
-        let localised_group = parse_localised_group(&mut input.lines());
-        assert_eq!(
-            localised_group.unwrap().1.group,
-            hashmap! {
+        let localised_group = parse_localised_desktop_group(&mut input.lines().peekable());
+        assert_that(&localised_group)
+            .is_some()
+            .map(|group| &group.0)
+            .is_equal_to("Desktop group header".to_owned());
+        assert_that(&localised_group)
+            .is_some()
+            .map(|group| &group.1.group)
+            .is_equal_to(hashmap! {
                 "Key1".to_owned() => LocalisedValue {
-                    localised_value: vec!{
+                    localised_value: vec![
                         (Locale::default(), "Value1".to_owned()),
                         ("en".parse::<Locale>().unwrap(), "Value2".to_owned()),
-                    }
+                    ]
                 },
                 "Key2".to_owned() => LocalisedValue {
-                    localised_value: vec!{
+                    localised_value: vec![
                         ("C".parse::<Locale>().unwrap(), "Value3".to_owned()),
-                    }
+                    ]
                 }
-            }
-        );
+            });
     }
 
     #[test]
     fn multiple_groups() {
-        let input = "[group header]
+        let input = "[Desktop Entry]
         # Comment
         Key1=Value1
         Key1[en]=Value2
         Key2[C]=Value3
 
-        [Desktop Another Group]
+        [Desktop Action group]
         # Top comment
         Key=Value
         # Middle comment
         Key=Overwritten Value
         # Bottom comment
         ";
-        parse_localised_group(&mut input.lines());
-        let localised_group = parse_localised_group(&mut input.lines());
-        assert_eq!(
-            localised_group.unwrap().1.group,
-            hashmap! {
+        let mut lines = input.lines().peekable();
+
+        let localised_group = parse_localised_desktop_group(&mut lines);
+
+        assert_that(&localised_group)
+            .is_some()
+            .map(|group| &group.0)
+            .is_equal_to("Desktop Entry".to_owned());
+        assert_that(&localised_group)
+            .is_some()
+            .map(|group| &group.1.group)
+            .is_equal_to(hashmap! {
+                "Key1".to_owned() => LocalisedValue {
+                    localised_value: vec![
+                        (Locale::default(), "Value1".to_owned()),
+                        ("en".parse().unwrap(), "Value2".to_owned()),
+                    ]
+                },
+                "Key2".to_owned() => LocalisedValue {
+                    localised_value: vec![
+                        ("C".parse().unwrap(), "Value3".to_owned()),
+                    ]
+                },
+            });
+
+        let localised_group = parse_localised_desktop_group(&mut lines);
+
+        assert_that(&localised_group)
+            .is_some()
+            .map(|group| &group.0)
+            .is_equal_to("Desktop Action group".to_owned());
+        assert_that(&localised_group)
+            .is_some()
+            .map(|group| &group.1.group)
+            .is_equal_to(hashmap! {
                 "Key".to_owned() => LocalisedValue {
                     localised_value: vec![
                         (Locale::default(), "Overwritten Value".to_owned()),
                     ]
                 },
-            }
-        );
+            });
     }
 }
 
