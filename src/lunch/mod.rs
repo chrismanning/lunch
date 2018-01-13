@@ -15,7 +15,6 @@ mod launch;
 pub use self::launch::Launch;
 
 pub use self::env::Lunchable;
-pub use self::env::BasicLunchable;
 
 enum Io {
     Suppress,

@@ -43,29 +43,3 @@ impl LunchEnv {
         unimplemented!()
     }
 }
-
-pub struct BasicLunchable {
-    pub launch: Rc<Launch>,
-    pub search: Rc<Search>,
-    pub display: Rc<Display>,
-}
-
-impl BasicLunchable {}
-
-impl Launch for BasicLunchable {
-    fn launch(&self, args: Vec<String>) -> Error {
-        self.launch.launch(args)
-    }
-}
-
-impl Search for BasicLunchable {
-    fn search_terms<'a>(&'a self) -> SearchTerms<'a> {
-        self.search.search_terms()
-    }
-}
-
-impl Display for BasicLunchable {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        self.display.fmt(f)
-    }
-}
