@@ -109,3 +109,66 @@ where
         })
         .collect()
 }
+
+#[cfg(test)]
+mod parse_files_test {
+    use super::*;
+    use spectral::prelude::*;
+    use std::fs::File;
+    use tempdir::TempDir;
+    use std::io::Write;
+
+    #[test]
+    fn test() {
+        let tmp_dir = TempDir::new("parse_files").unwrap();
+        let path = tmp_dir.path().join("app.desktop");
+        {
+            let mut file = File::create(path.clone()).unwrap();
+            writeln!(file, "
+                [Desktop Entry]
+                Name=Some Desktop Application
+                GenericName=App
+                Type=Application
+                Exec=exec
+                Comment=comment
+                Icon=icon
+                Actions=test;
+                Categories=Utility;;
+                Keywords=word
+                Hidden=true
+                Path=/
+                NoDisplay=false
+                OnlyShowIn=A
+                NotShowIn=B
+
+                [Desktop Action test]
+                Name=Test
+                Exec=exec
+                ").unwrap();
+            drop(file);
+        }
+        let files = parse_files([path].iter(), &"C".parse().unwrap());
+
+        assert_that(&files).has_length(1);
+    }
+
+    #[test]
+    fn test_err_open() {
+        let tmp_dir = TempDir::new("parse_files").unwrap();
+        let path = tmp_dir.path().join("non-existent-file");
+        let files = parse_files([path].iter(), &"C".parse().unwrap());
+        assert_that(&files).has_length(0);
+    }
+
+    #[test]
+    fn test_err_read() {
+        let tmp_dir = TempDir::new("parse_files").unwrap();
+        let path = tmp_dir.path().join("app.desktop");
+        {
+            let file = File::create(path.clone()).unwrap();
+            drop(file);
+        }
+        let files = parse_files([path].iter(), &"C".parse().unwrap());
+        assert_that(&files).has_length(0);
+    }
+}
