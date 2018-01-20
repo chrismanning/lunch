@@ -193,6 +193,7 @@ impl Search for ApplicationPart {
                 .map(Borrow::borrow)
                 .map(Cow::Borrowed)
                 .collect(),
+            related: None,
         }
     }
 }

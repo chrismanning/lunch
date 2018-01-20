@@ -76,6 +76,7 @@ mod tests {
                 search_terms: SearchTerms {
                     terms: terms.iter().map(|s| Cow::Borrowed(*s)).collect(),
                     keywords: keywords.iter().map(|s| Cow::Borrowed(*s)).collect(),
+                    related: None,
                 },
             }
         }
@@ -86,6 +87,7 @@ mod tests {
             SearchTerms {
                 terms: self.search_terms.terms.clone(),
                 keywords: self.search_terms.keywords.clone(),
+                related: None,
             }
         }
     }
