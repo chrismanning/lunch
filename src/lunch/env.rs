@@ -1,10 +1,10 @@
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::fmt::Display;
 use std::rc::Rc;
 
 use super::errors::*;
 
 use super::Launch;
-use super::{Search, SearchTerms};
+use super::Search;
 use super::keyword::Keyword;
 
 use super::freedesktop::env::init_lunch;
