@@ -16,6 +16,9 @@ pub struct SearchTerms<'a> {
 
 impl<'a> Debug for SearchTerms<'a> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "SearchTerms {{ terms: {:?}, keywords: {:?} }}", self.terms, self.keywords)
+        f.debug_struct("SearchTerms")
+            .field("terms", &self.terms)
+            .field("keywords", &self.keywords)
+            .finish()
     }
 }

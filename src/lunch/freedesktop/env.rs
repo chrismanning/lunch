@@ -122,7 +122,9 @@ mod parse_files_test {
         let path = tmp_dir.path().join("app.desktop");
         {
             let mut file = File::create(path.clone()).unwrap();
-            writeln!(file, "
+            writeln!(
+                file,
+                "
                 [Desktop Entry]
                 Name=Some Desktop Application
                 GenericName=App
@@ -142,7 +144,8 @@ mod parse_files_test {
                 [Desktop Action test]
                 Name=Test
                 Exec=exec
-                ").unwrap();
+                "
+            ).unwrap();
             drop(file);
         }
         let files = parse_files([path].iter(), &"C".parse().unwrap());

@@ -17,3 +17,4 @@ peeking_take_while = "0.1"
 [dev-dependencies]
 tempdir = "0.3"
 spectral = "0.6"
+users = "*"
