@@ -164,13 +164,11 @@ trait MetadataExecExt {
 impl MetadataExecExt for fs::Metadata {
     fn exec(&self) -> bool {
         let current_uid = get_effective_uid();
-        let owner_uid = self.uid();
-        let owner_gid = self.gid();
-        if current_uid == owner_uid && self.exec_owner() {
+        if current_uid == self.uid() && self.exec_owner() {
             return true;
         }
         if self.exec_owner() {
-            if let Some(group) = get_group_by_gid(owner_gid) {
+            if let Some(group) = get_group_by_gid(self.gid()) {
                 if let Some(user) = get_user_by_uid(current_uid) {
                     if group
                         .members()
