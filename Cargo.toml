@@ -13,8 +13,8 @@ log = "0.3"
 maplit = "1.0"
 xdg = "2.1"
 peeking_take_while = "0.1"
+users = "*"
 
 [dev-dependencies]
 tempdir = "0.3"
 spectral = "0.6"
-users = "*"
