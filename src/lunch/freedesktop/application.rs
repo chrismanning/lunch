@@ -4,6 +4,7 @@ use std::fs;
 use std::rc::Rc;
 use std::convert::TryFrom;
 use std::os::unix::fs::MetadataExt;
+use std::ffi::OsString;
 
 use users::*;
 use users::os::unix::GroupExt;
@@ -90,15 +91,15 @@ impl ApplicationPart {
     pub fn can_exec(&self) -> bool {
         self.try_exec
             .as_ref()
-            .map(|try_exec| can_exec(try_exec.as_path()))
+            .map(|try_exec| can_exec(try_exec.as_path(), ::std::env::var_os("PATH")))
             .unwrap_or_else(|| true)
     }
 }
 
-fn can_exec(try_exec: &Path) -> bool {
+fn can_exec(try_exec: &Path, env_path: Option<OsString>) -> bool {
     if try_exec.is_absolute() {
-        try_exec.exists()
-    } else if let Some(paths) = ::std::env::var_os("PATH") {
+        try_exec.exists() && is_executable(try_exec)
+    } else if let Some(paths) = env_path {
         for path in ::std::env::split_paths(&paths) {
             debug!(
                 "Looking for '{}' in '{}'",
@@ -108,18 +109,7 @@ fn can_exec(try_exec: &Path) -> bool {
             if path.is_absolute() && path.exists() {
                 let path = path.join(try_exec);
                 if path.exists() {
-                    debug!("Path '{}' exists", path.display());
-                    match fs::metadata(&path) {
-                        Ok(metadata) => {
-                            return metadata.exec();
-                        }
-                        Err(_err) => {
-                            warn!(
-                                "Could not determine if path '{}' is executable",
-                                path.display()
-                            );
-                        }
-                    }
+                    return is_executable(&path);
                 }
             }
         }
@@ -129,28 +119,74 @@ fn can_exec(try_exec: &Path) -> bool {
     }
 }
 
+fn is_executable(path: &Path) -> bool {
+    debug!("Path '{}' exists", path.display());
+    match fs::metadata(&path) {
+        Ok(metadata) => {
+            debug!("Path '{}' executable: {}", path.display(), metadata.exec());
+            metadata.exec()
+        }
+        Err(_err) => {
+            debug!(
+                "Could not determine if path '{}' is executable",
+                path.display()
+            );
+            false
+        }
+    }
+}
+
 #[cfg(test)]
 mod can_exec_tests {
     use super::*;
-
-    #[test]
-    fn test_relative() {
-        assert!(can_exec(Path::new("echo")));
-    }
+    use std::fs::{File, set_permissions};
+    use std::os::unix::fs::PermissionsExt;
+    use tempdir::TempDir;
 
     #[test]
     fn test_nonexistant() {
-        assert!(!can_exec(Path::new("mdi309r29rj298f93d")));
+        let tmp_dir = TempDir::new("can_exec").unwrap();
+        assert!(!can_exec(Path::new("test_nonexistant"), Some(tmp_dir.path().as_os_str().to_owned())));
+    }
+
+    #[test]
+    fn test_relative() {
+        let tmp_dir = TempDir::new("can_exec").unwrap();
+        let path = tmp_dir.path().join("test_relative");
+        let _file = File::create(&path).unwrap();
+        set_permissions(&path, PermissionsExt::from_mode(0o777)).unwrap();
+
+        assert!(can_exec(Path::new("test_relative"), Some(tmp_dir.path().as_os_str().to_owned())));
+    }
+
+    #[test]
+    fn test_relative_not_exec() {
+        let tmp_dir = TempDir::new("can_exec").unwrap();
+        let path = tmp_dir.path().join("test_relative_not_exec");
+        let _file = File::create(&path).unwrap();
+        set_permissions(&path, PermissionsExt::from_mode(0o666)).unwrap();
+
+        assert!(!can_exec(Path::new("test_relative_not_exec"), Some(tmp_dir.path().as_os_str().to_owned())));
     }
 
     #[test]
     fn test_absolute() {
-        use tempdir::TempDir;
-
         let tmp_dir = TempDir::new("can_exec").unwrap();
-        let path = tmp_dir.path().join("echo");
+        let path = tmp_dir.path().join("test_absolute");
+        let _file = File::create(&path).unwrap();
+        set_permissions(&path, PermissionsExt::from_mode(0o777)).unwrap();
 
-        assert!(!can_exec(&path));
+        assert!(can_exec(&path, None));
+    }
+
+    #[test]
+    fn test_absolute_not_exec() {
+        let tmp_dir = TempDir::new("can_exec").unwrap();
+        let path = tmp_dir.path().join("test_absolute_not_exec");
+        let _file = File::create(&path).unwrap();
+        set_permissions(&path, PermissionsExt::from_mode(0o666)).unwrap();
+
+        assert!(!can_exec(&path, None));
     }
 }
 
