@@ -28,12 +28,13 @@ pub fn parse_desktop_groups(src: &str, locale: &Locale) -> Result<Groups> {
 #[cfg(test)]
 mod parse_desktop_groups_tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn empty_group_err() {
         let input = "";
         let groups = parse_desktop_groups(input, &Locale::default());
-        assert!(groups.is_err());
+        assert_that!(groups).is_err();
     }
 
     #[test]
@@ -52,14 +53,11 @@ mod parse_desktop_groups_tests {
         # Bottom comment
         ";
         let groups = parse_desktop_groups(input, &Locale::default());
-        assert_eq!(
-            groups.unwrap(),
-            hashmap!{
-                "Desktop Group".to_owned() => hashmap!{
-                    "Key".to_owned() => "Overwritten Value".to_owned(),
-                }
+        assert_that!(groups.unwrap()).is_equal_to(hashmap!{
+            "Desktop Group".to_owned() => hashmap!{
+                "Key".to_owned() => "Overwritten Value".to_owned(),
             }
-        );
+        });
     }
 }
 
@@ -88,6 +86,7 @@ impl LocalisedGroup {
 #[cfg(test)]
 mod localised_group_tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn resolve_to_locale() {
@@ -106,12 +105,11 @@ mod localised_group_tests {
                 }
             },
         };
-        assert_eq!(
-            localised_group.resolve_to_locale(&"C".parse().unwrap()),
+        assert_that!(localised_group.resolve_to_locale(&"C".parse().unwrap())).is_equal_to(
             hashmap!{
                 "Key1".to_owned() => "def".to_owned(),
                 "Key2".to_owned() => "C".to_owned(),
-            }
+            },
         );
     }
 }
@@ -150,6 +148,7 @@ impl LocalisedValue {
 #[cfg(test)]
 mod localised_value_tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn get_exact() {
@@ -160,7 +159,7 @@ mod localised_value_tests {
             ],
         };
         let value = localised_value.remove(&"en_GB".parse().unwrap()).unwrap();
-        assert_eq!(value, "en_GB");
+        assert_that!(value).is_equal_to("en_GB".to_owned());
     }
 
     #[test]
@@ -169,7 +168,7 @@ mod localised_value_tests {
             localised_value: vec![("en".parse().unwrap(), "en".to_owned())],
         };
         let value = localised_value.remove(&"en_GB".parse().unwrap()).unwrap();
-        assert_eq!(value, "en");
+        assert_that!(value).is_equal_to("en".to_owned());
     }
 
     #[test]
@@ -181,7 +180,7 @@ mod localised_value_tests {
             ],
         };
         let value = localised_value.remove(&"en".parse().unwrap()).unwrap();
-        assert_eq!(value, "en");
+        assert_that!(value).is_equal_to("en".to_owned());
     }
 
     #[test]
@@ -190,7 +189,7 @@ mod localised_value_tests {
             localised_value: vec![("en".parse().unwrap(), "en".to_owned())],
         };
         let value = localised_value.remove(&"en_GB".parse().unwrap()).unwrap();
-        assert_eq!(value, "en");
+        assert_that!(value).is_equal_to("en".to_owned());
     }
 
     #[test]
@@ -206,7 +205,7 @@ mod localised_value_tests {
         let value = localised_value
             .remove(&"sr_YU@Latn".parse().unwrap())
             .unwrap();
-        assert_eq!(value, "sr_YU");
+        assert_that!(value).is_equal_to("sr_YU".to_owned());
     }
 }
 
@@ -385,18 +384,17 @@ fn parse_header(line: &str) -> Option<String> {
 #[cfg(test)]
 mod parse_header_tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn header() {
-        assert_eq!(
-            parse_header(&"[group header]".to_owned()),
-            Some("group header".to_owned())
-        );
+        assert_that!(parse_header(&"[group header]".to_owned()))
+            .is_equal_to(Some("group header".to_owned()));
     }
 
     #[test]
     fn not_header() {
-        assert_eq!(parse_header(&"group header]".to_owned()), None);
+        assert_that!(parse_header(&"group header]".to_owned())).is_none();
     }
 }
 
@@ -417,26 +415,27 @@ fn parse_key(line: &str) -> (&str, Locale) {
 #[cfg(test)]
 mod parse_key_tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn no_locale() {
         let (key, locale) = parse_key("Key");
-        assert_eq!(key, "Key");
-        assert_eq!(locale, Locale::default());
+        assert_that!(key).is_equal_to("Key");
+        assert_that!(locale).is_equal_to(Locale::default());
     }
 
     #[test]
     fn locale() {
         let (key, locale) = parse_key("Key[lang]");
-        assert_eq!(key, "Key");
-        assert_eq!(locale, "lang".parse().unwrap());
+        assert_that!(key).is_equal_to("Key");
+        assert_that!(locale).is_equal_to("lang".parse::<Locale>().unwrap());
     }
 
     #[test]
     fn empty_locale() {
         let (key, locale) = parse_key("Key[]");
-        assert_eq!(key, "Key");
-        assert_eq!(locale, Locale::default());
+        assert_that!(key).is_equal_to("Key");
+        assert_that!(locale).is_equal_to(Locale::default());
     }
 }
 
@@ -449,14 +448,17 @@ fn split_first(delim: char, s: &str) -> Option<(&str, &str)> {
 #[cfg(test)]
 mod split_tests {
     use super::split_first;
+    use spectral::prelude::*;
 
     #[test]
     fn split_match() {
-        assert_eq!(split_first('b', "abc"), Some(("a", "c")))
+        assert_that!(split_first('b', "abc"))
+            .is_some()
+            .is_equal_to(("a", "c"))
     }
 
     #[test]
     fn no_match() {
-        assert_eq!(split_first('-', "abc"), None)
+        assert_that!(split_first('-', "abc")).is_none();
     }
 }

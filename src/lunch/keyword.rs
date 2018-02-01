@@ -62,10 +62,12 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use spectral::prelude::*;
     use std::borrow::Cow;
     use lunch::search::SearchTerms;
-    use super::*;
 
+    #[derive(Debug)]
     struct DummySearch<'a> {
         search_terms: SearchTerms<'a>,
     }
@@ -98,7 +100,7 @@ mod tests {
             Box::new(DummySearch::new(vec![], vec!["keyword"])),
         ]);
 
-        assert!(keyword_searcher.search("keyword").is_some());
+        assert_that!(keyword_searcher.search("keyword")).is_some();
     }
 
     #[test]
@@ -107,7 +109,7 @@ mod tests {
             Box::new(DummySearch::new(vec![], vec!["keyword"])),
         ]);
 
-        assert!(keyword_searcher.search("keywor").is_some());
+        assert_that!(keyword_searcher.search("keywor")).is_some();
     }
 
     #[test]
@@ -116,7 +118,7 @@ mod tests {
             Box::new(DummySearch::new(vec![], vec!["keyword"])),
         ]);
 
-        assert!(keyword_searcher.search("keyword1").is_none());
+        assert_that!(keyword_searcher.search("keyword1")).is_none();
     }
 
     #[test]
@@ -125,6 +127,6 @@ mod tests {
             Box::new(DummySearch::new(vec![], vec!["keyword"])),
         ]);
 
-        assert!(keyword_searcher.search("ke").is_none());
+        assert_that!(keyword_searcher.search("ke")).is_none();
     }
 }

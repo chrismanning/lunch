@@ -99,55 +99,74 @@ impl Locale {
 #[cfg(test)]
 mod from_str_tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn from_str() {
         let s = "en_GB.UTF-8@mod";
         let locale: Locale = s.parse().unwrap();
-        assert_eq!(locale.lang, "en");
-        assert_eq!(locale.country, Some("GB".to_string()));
-        assert_eq!(locale.encoding, Some("UTF-8".to_string()));
-        assert_eq!(locale.modifier, Some("mod".to_string()));
+        assert_that!(locale.lang).is_equal_to("en".to_owned());
+        assert_that!(locale.country)
+            .is_some()
+            .is_equal_to("GB".to_string());
+        assert_that!(locale.encoding)
+            .is_some()
+            .is_equal_to("UTF-8".to_string());
+        assert_that!(locale.modifier)
+            .is_some()
+            .is_equal_to("mod".to_string());
     }
 
     #[test]
     fn from_str_no_modifier() {
         let s = "en_GB.UTF-8";
         let locale: Locale = s.parse().unwrap();
-        assert_eq!(locale.lang, "en");
-        assert_eq!(locale.country, Some("GB".to_string()));
-        assert_eq!(locale.encoding, Some("UTF-8".to_string()));
-        assert_eq!(locale.modifier, None);
+        assert_that!(locale.lang).is_equal_to("en".to_owned());
+        assert_that!(locale.country)
+            .is_some()
+            .is_equal_to("GB".to_string());
+        assert_that!(locale.encoding)
+            .is_some()
+            .is_equal_to("UTF-8".to_string());
+        assert_that!(locale.modifier).is_none();
     }
 
     #[test]
     fn from_str_modifier_no_country() {
         let s = "en.UTF-8@mod";
         let locale: Locale = s.parse().unwrap();
-        assert_eq!(locale.lang, "en");
-        assert_eq!(locale.country, None);
-        assert_eq!(locale.encoding, Some("UTF-8".to_string()));
-        assert_eq!(locale.modifier, Some("mod".to_string()));
+        assert_that!(locale.lang).is_equal_to("en".to_owned());
+        assert_that!(locale.country).is_none();
+        assert_that!(locale.encoding)
+            .is_some()
+            .is_equal_to("UTF-8".to_string());
+        assert_that!(locale.modifier)
+            .is_some()
+            .is_equal_to("mod".to_string());
     }
 
     #[test]
     fn from_str_modifier_no_country_no_encoding() {
         let s = "en@mod";
         let locale: Locale = s.parse().unwrap();
-        assert_eq!(locale.lang, "en");
-        assert_eq!(locale.country, None);
-        assert_eq!(locale.encoding, None);
-        assert_eq!(locale.modifier, Some("mod".to_string()));
+        assert_that!(locale.lang).is_equal_to("en".to_owned());
+        assert_that!(locale.country).is_none();
+        assert_that!(locale.encoding).is_none();
+        assert_that!(locale.modifier)
+            .is_some()
+            .is_equal_to("mod".to_string());
     }
 
     #[test]
     fn from_str_no_country() {
         let s = "en.UTF-8";
         let locale: Locale = s.parse().unwrap();
-        assert_eq!(locale.lang, "en");
-        assert_eq!(locale.country, None);
-        assert_eq!(locale.encoding, Some("UTF-8".to_string()));
-        assert_eq!(locale.modifier, None);
+        assert_that!(locale.lang).is_equal_to("en".to_owned());
+        assert_that!(locale.country).is_none();
+        assert_that!(locale.encoding)
+            .is_some()
+            .is_equal_to("UTF-8".to_string());
+        assert_that!(locale.modifier).is_none();
     }
 
     #[test]
@@ -161,6 +180,7 @@ mod from_str_tests {
 #[cfg(test)]
 mod match_level_tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn match_level_lang_country_mod() {
@@ -169,25 +189,31 @@ mod match_level_tests {
             let b: Locale = "en_GB@mod".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, Some(MatchLevel::LangCountryModifier));
+            assert_that!(res)
+                .is_some()
+                .is_equal_to(MatchLevel::LangCountryModifier);
         }
         {
             let b: Locale = "en_GB".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, Some(MatchLevel::LangCountry));
+            assert_that!(res)
+                .is_some()
+                .is_equal_to(MatchLevel::LangCountry);
         }
         {
             let b: Locale = "en@mod".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, Some(MatchLevel::LangModifier));
+            assert_that!(res)
+                .is_some()
+                .is_equal_to(MatchLevel::LangModifier);
         }
         {
             let b: Locale = "en".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, Some(MatchLevel::Lang));
+            assert_that!(res).is_some().is_equal_to(MatchLevel::Lang);
         }
     }
 
@@ -198,13 +224,15 @@ mod match_level_tests {
             let b: Locale = "en_GB".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, Some(MatchLevel::LangCountry));
+            assert_that!(res)
+                .is_some()
+                .is_equal_to(MatchLevel::LangCountry);
         }
         {
             let b: Locale = "en".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, Some(MatchLevel::Lang));
+            assert_that!(res).is_some().is_equal_to(MatchLevel::Lang);
         }
     }
 
@@ -215,13 +243,15 @@ mod match_level_tests {
             let b: Locale = "en@mod".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, Some(MatchLevel::LangModifier));
+            assert_that!(res)
+                .is_some()
+                .is_equal_to(MatchLevel::LangModifier);
         }
         {
             let b: Locale = "en".parse().unwrap();
 
             let res = a.match_level(&b);
-            assert_eq!(res, Some(MatchLevel::Lang));
+            assert_that!(res).is_some().is_equal_to(MatchLevel::Lang);
         }
     }
 
@@ -231,14 +261,12 @@ mod match_level_tests {
         let b: Locale = "en_GB@mod".parse().unwrap();
 
         let res = a.match_level(&b);
-        assert_eq!(res, None);
+        assert_that!(res).is_none();
     }
 
     #[test]
     fn match_level_ord() {
-        use std::cmp::Ordering;
-        let ord = MatchLevel::LangCountryModifier.cmp(&MatchLevel::LangCountry);
-        assert_eq!(Ordering::Greater, ord);
+        assert_that!(MatchLevel::LangCountryModifier).is_greater_than(&MatchLevel::LangCountry);
     }
 
     #[test]
@@ -246,15 +274,21 @@ mod match_level_tests {
         let a: Locale = "sr_YU@Latn".parse().unwrap();
         {
             let b: Locale = "sr_YU".parse().unwrap();
-            assert_eq!(Some(MatchLevel::LangCountry), a.match_level(&b));
+            assert_that!(a.match_level(&b))
+                .is_some()
+                .is_equal_to(MatchLevel::LangCountry);
         }
         {
             let b: Locale = "sr@Latn".parse().unwrap();
-            assert_eq!(Some(MatchLevel::LangModifier), a.match_level(&b));
+            assert_that!(a.match_level(&b))
+                .is_some()
+                .is_equal_to(MatchLevel::LangModifier);
         }
         {
             let b: Locale = "sr".parse().unwrap();
-            assert_eq!(Some(MatchLevel::Lang), a.match_level(&b));
+            assert_that!(a.match_level(&b))
+                .is_some()
+                .is_equal_to(MatchLevel::Lang);
         }
     }
 }

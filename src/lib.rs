@@ -15,6 +15,7 @@ extern crate users;
 extern crate xdg;
 
 #[cfg(test)]
+#[macro_use]
 extern crate spectral;
 #[cfg(test)]
 extern crate tempdir;

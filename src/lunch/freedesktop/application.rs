@@ -139,14 +139,18 @@ fn is_executable(path: &Path) -> bool {
 #[cfg(test)]
 mod can_exec_tests {
     use super::*;
-    use std::fs::{File, set_permissions};
+    use spectral::prelude::*;
+    use std::fs::{set_permissions, File};
     use std::os::unix::fs::PermissionsExt;
     use tempdir::TempDir;
 
     #[test]
     fn test_nonexistant() {
         let tmp_dir = TempDir::new("can_exec").unwrap();
-        assert!(!can_exec(Path::new("test_nonexistant"), Some(tmp_dir.path().as_os_str().to_owned())));
+        assert_that!(can_exec(
+            Path::new("test_nonexistant"),
+            Some(tmp_dir.path().as_os_str().to_owned())
+        )).is_equal_to(false);
     }
 
     #[test]
@@ -156,7 +160,10 @@ mod can_exec_tests {
         let _file = File::create(&path).unwrap();
         set_permissions(&path, PermissionsExt::from_mode(0o777)).unwrap();
 
-        assert!(can_exec(Path::new("test_relative"), Some(tmp_dir.path().as_os_str().to_owned())));
+        assert_that!(can_exec(
+            Path::new("test_relative"),
+            Some(tmp_dir.path().as_os_str().to_owned())
+        )).is_equal_to(true);
     }
 
     #[test]
@@ -166,7 +173,10 @@ mod can_exec_tests {
         let _file = File::create(&path).unwrap();
         set_permissions(&path, PermissionsExt::from_mode(0o666)).unwrap();
 
-        assert!(!can_exec(Path::new("test_relative_not_exec"), Some(tmp_dir.path().as_os_str().to_owned())));
+        assert_that!(can_exec(
+            Path::new("test_relative_not_exec"),
+            Some(tmp_dir.path().as_os_str().to_owned())
+        )).is_equal_to(false);
     }
 
     #[test]
@@ -176,7 +186,7 @@ mod can_exec_tests {
         let _file = File::create(&path).unwrap();
         set_permissions(&path, PermissionsExt::from_mode(0o777)).unwrap();
 
-        assert!(can_exec(&path, None));
+        assert_that!(can_exec(&path, None)).is_equal_to(true);
     }
 
     #[test]
@@ -186,7 +196,7 @@ mod can_exec_tests {
         let _file = File::create(&path).unwrap();
         set_permissions(&path, PermissionsExt::from_mode(0o666)).unwrap();
 
-        assert!(!can_exec(&path, None));
+        assert_that!(can_exec(&path, None)).is_equal_to(false);
     }
 }
 

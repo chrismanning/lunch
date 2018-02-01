@@ -110,6 +110,7 @@ impl FromStr for Arg {
 #[cfg(test)]
 mod exec_tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     #[should_panic]
@@ -128,8 +129,8 @@ mod exec_tests {
             args: vec![],
         };
         let cmd_line = exec.get_command_line(vec![]);
-        assert_eq!(cmd_line.args, vec![] as Vec<String>);
-        assert_eq!(cmd_line.cmd, "echo");
+        assert_that!(cmd_line.args).is_equal_to(vec![] as Vec<String>);
+        assert_that!(cmd_line.cmd).is_equal_to("echo".to_owned());
     }
 
     #[test]
@@ -139,8 +140,8 @@ mod exec_tests {
             args: vec![Arg::StaticArg("-n".into()), Arg::StaticArg("-e".into())],
         };
         let cmd_line = exec.get_command_line(vec![]);
-        assert_eq!(cmd_line.args, vec!["-n".to_owned(), "-e".to_owned()]);
-        assert_eq!(cmd_line.cmd, "echo");
+        assert_that!(cmd_line.args).is_equal_to(vec!["-n".to_owned(), "-e".to_owned()]);
+        assert_that!(cmd_line.cmd).is_equal_to("echo".to_owned());
     }
 
     #[test]
@@ -150,8 +151,8 @@ mod exec_tests {
             args: vec![Arg::FieldCode],
         };
         let cmd_line = exec.get_command_line(vec!["-n".to_owned(), "-e".to_owned()]);
-        assert_eq!(cmd_line.args, vec!["-n".to_owned(), "-e".to_owned()]);
-        assert_eq!(cmd_line.cmd, "echo");
+        assert_that!(cmd_line.args).is_equal_to(vec!["-n".to_owned(), "-e".to_owned()]);
+        assert_that!(cmd_line.cmd).is_equal_to("echo".to_owned());
     }
 
     #[test]
@@ -165,59 +166,51 @@ mod exec_tests {
             ],
         };
         let cmd_line = exec.get_command_line(vec!["-E".to_owned()]);
-        assert_eq!(
-            cmd_line.args,
-            vec!["-n".to_owned(), "-E".to_owned(), "-e".to_owned()]
-        );
-        assert_eq!(cmd_line.cmd, "echo");
+        assert_that!(cmd_line.args).is_equal_to(vec![
+            "-n".to_owned(),
+            "-E".to_owned(),
+            "-e".to_owned(),
+        ]);
+        assert_that!(cmd_line.cmd).is_equal_to("echo".to_owned());
     }
 
     #[test]
     fn exec_parse_cmd_only() {
         let exec: Exec = "echo".parse().unwrap();
-        assert_eq!(&exec.exec, "echo");
-        assert_eq!(exec.args, vec![]);
+        assert_that!(&exec.exec).is_equal_to("echo".to_owned());
+        assert_that!(exec.args).is_equal_to(vec![]);
     }
 
     #[test]
     fn exec_parse_args() {
         let exec: Exec = "echo -n -e".parse().unwrap();
-        assert_eq!(&exec.exec, "echo");
-        assert_eq!(
-            exec.args,
-            vec![
-                Arg::StaticArg("-n".to_owned()),
-                Arg::StaticArg("-e".to_owned()),
-            ]
-        );
+        assert_that!(&exec.exec).is_equal_to("echo".to_owned());
+        assert_that!(exec.args).is_equal_to(vec![
+            Arg::StaticArg("-n".to_owned()),
+            Arg::StaticArg("-e".to_owned()),
+        ]);
     }
 
     #[test]
     fn exec_parse_field_code() {
         let exec: Exec = "echo -n %f -e".parse().unwrap();
-        assert_eq!(&exec.exec, "echo");
-        assert_eq!(
-            exec.args,
-            vec![
-                Arg::StaticArg("-n".to_owned()),
-                Arg::FieldCode,
-                Arg::StaticArg("-e".to_owned()),
-            ]
-        );
+        assert_that!(&exec.exec).is_equal_to("echo".to_owned());
+        assert_that!(exec.args).is_equal_to(vec![
+            Arg::StaticArg("-n".to_owned()),
+            Arg::FieldCode,
+            Arg::StaticArg("-e".to_owned()),
+        ]);
     }
 
     #[test]
     fn exec_parse_space() {
         let exec: Exec = r"/opt/Echo\ 2/echo -n %f -e".parse().unwrap();
-        assert_eq!(&exec.exec, r"/opt/Echo 2/echo");
-        assert_eq!(
-            exec.args,
-            vec![
-                Arg::StaticArg("-n".to_owned()),
-                Arg::FieldCode,
-                Arg::StaticArg("-e".to_owned()),
-            ]
-        );
+        assert_that!(&exec.exec).is_equal_to(r"/opt/Echo 2/echo".to_owned());
+        assert_that!(exec.args).is_equal_to(vec![
+            Arg::StaticArg("-n".to_owned()),
+            Arg::FieldCode,
+            Arg::StaticArg("-e".to_owned()),
+        ]);
     }
 
     #[test]
@@ -225,17 +218,14 @@ mod exec_tests {
         let exec: Exec = r##"/opt/Echo\ 2/echo -n %f -e "arg with spaces" -v"##
             .parse()
             .unwrap();
-        assert_eq!(&exec.exec, "/opt/Echo 2/echo");
-        assert_eq!(
-            exec.args,
-            vec![
-                Arg::StaticArg("-n".to_owned()),
-                Arg::FieldCode,
-                Arg::StaticArg("-e".to_owned()),
-                Arg::StaticArg("arg with spaces".to_owned()),
-                Arg::StaticArg("-v".to_owned()),
-            ]
-        );
+        assert_that!(&exec.exec).is_equal_to("/opt/Echo 2/echo".to_owned());
+        assert_that!(exec.args).is_equal_to(vec![
+            Arg::StaticArg("-n".to_owned()),
+            Arg::FieldCode,
+            Arg::StaticArg("-e".to_owned()),
+            Arg::StaticArg("arg with spaces".to_owned()),
+            Arg::StaticArg("-v".to_owned()),
+        ]);
     }
 }
 
@@ -287,28 +277,25 @@ impl FieldCode {
 #[cfg(test)]
 mod field_code_tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn test_extract() {
-        assert_eq!(
-            Some(FieldCode::SingleFile),
-            FieldCode::extract_field_code("/bin/echo %f")
-        );
-        assert_eq!(
-            Some(FieldCode::MultipleFiles),
-            FieldCode::extract_field_code("/bin/echo %F")
-        );
-        assert_eq!(
-            Some(FieldCode::SingleUrl),
-            FieldCode::extract_field_code("/bin/echo %u")
-        );
-        assert_eq!(
-            Some(FieldCode::MultipleUrls),
-            FieldCode::extract_field_code("/bin/echo %U")
-        );
+        assert_that!(FieldCode::extract_field_code("/bin/echo %f"))
+            .is_some()
+            .is_equal_to(FieldCode::SingleFile);
+        assert_that!(FieldCode::extract_field_code("/bin/echo %F"))
+            .is_some()
+            .is_equal_to(FieldCode::MultipleFiles);
+        assert_that!(FieldCode::extract_field_code("/bin/echo %u"))
+            .is_some()
+            .is_equal_to(FieldCode::SingleUrl);
+        assert_that!(FieldCode::extract_field_code("/bin/echo %U"))
+            .is_some()
+            .is_equal_to(FieldCode::MultipleUrls);
 
-        assert_eq!(None, FieldCode::extract_field_code("/bin/echo %G"));
-        assert_eq!(None, FieldCode::extract_field_code("/bin/echo"));
+        assert_that!(FieldCode::extract_field_code("/bin/echo %G")).is_none();
+        assert_that!(FieldCode::extract_field_code("/bin/echo")).is_none();
     }
 
     #[test]
@@ -318,10 +305,10 @@ mod field_code_tests {
             args: vec![Arg::FieldCode],
         };
         let cmd_lines = FieldCode::SingleFile.expand_exec(&exec, vec![]);
-        assert_eq!(1, cmd_lines.len());
+        assert_that!(cmd_lines.len()).is_equal_to(1);
         let cmd_line = &cmd_lines[0];
-        assert_eq!(cmd_line.args, vec![] as Vec<String>);
-        assert_eq!(cmd_line.cmd, "echo");
+        assert_that!(cmd_line.args).is_equal_to(vec![] as Vec<String>);
+        assert_that!(cmd_line.cmd).is_equal_to("echo".to_owned());
     }
 
     #[test]
@@ -331,10 +318,10 @@ mod field_code_tests {
             args: vec![Arg::FieldCode],
         };
         let cmd_lines = FieldCode::SingleFile.expand_exec(&exec, vec!["arg".to_owned()]);
-        assert_eq!(1, cmd_lines.len());
+        assert_that!(cmd_lines.len()).is_equal_to(1);
         let cmd_line = &cmd_lines[0];
-        assert_eq!(cmd_line.args, vec!["arg".to_owned()]);
-        assert_eq!(cmd_line.cmd, "echo");
+        assert_that!(cmd_line.args).is_equal_to(vec!["arg".to_owned()]);
+        assert_that!(cmd_line.cmd).is_equal_to("echo".to_owned());
     }
 
     #[test]
@@ -345,13 +332,13 @@ mod field_code_tests {
         };
         let cmd_lines =
             FieldCode::SingleFile.expand_exec(&exec, vec!["arg1".to_owned(), "arg2".to_owned()]);
-        assert_eq!(2, cmd_lines.len());
+        assert_that!(cmd_lines.len()).is_equal_to(2);
         let cmd_line = &cmd_lines[0];
-        assert_eq!(cmd_line.args, vec!["arg1".to_owned()]);
-        assert_eq!(cmd_line.cmd, "echo");
+        assert_that!(cmd_line.args).is_equal_to(vec!["arg1".to_owned()]);
+        assert_that!(cmd_line.cmd).is_equal_to("echo".to_owned());
         let cmd_line = &cmd_lines[1];
-        assert_eq!(cmd_line.args, vec!["arg2".to_owned()]);
-        assert_eq!(cmd_line.cmd, "echo");
+        assert_that!(cmd_line.args).is_equal_to(vec!["arg2".to_owned()]);
+        assert_that!(cmd_line.cmd).is_equal_to("echo".to_owned());
     }
 
     #[test]
@@ -361,10 +348,10 @@ mod field_code_tests {
             args: vec![Arg::FieldCode],
         };
         let cmd_lines = FieldCode::MultipleFiles.expand_exec(&exec, vec!["arg".to_owned()]);
-        assert_eq!(1, cmd_lines.len());
+        assert_that!(cmd_lines.len()).is_equal_to(1);
         let cmd_line = &cmd_lines[0];
-        assert_eq!(cmd_line.args, vec!["arg".to_owned()]);
-        assert_eq!(cmd_line.cmd, "echo");
+        assert_that!(cmd_line.args).is_equal_to(vec!["arg".to_owned()]);
+        assert_that!(cmd_line.cmd).is_equal_to("echo".to_owned());
     }
 
     #[test]
@@ -375,9 +362,9 @@ mod field_code_tests {
         };
         let cmd_lines =
             FieldCode::MultipleFiles.expand_exec(&exec, vec!["arg1".to_owned(), "arg2".to_owned()]);
-        assert_eq!(1, cmd_lines.len());
+        assert_that!(cmd_lines.len()).is_equal_to(1);
         let cmd_line = &cmd_lines[0];
-        assert_eq!(cmd_line.args, vec!["arg1".to_owned(), "arg2".to_owned()]);
-        assert_eq!(cmd_line.cmd, "echo");
+        assert_that!(cmd_line.args).is_equal_to(vec!["arg1".to_owned(), "arg2".to_owned()]);
+        assert_that!(cmd_line.cmd).is_equal_to("echo".to_owned());
     }
 }
