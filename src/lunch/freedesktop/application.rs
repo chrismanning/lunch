@@ -18,8 +18,8 @@ use lunch::search::SearchTerms;
 
 #[derive(Debug)]
 pub struct Application {
-    pub app_part: Rc<ApplicationPart>,
-    pub action_parts: Vec<Rc<ActionPart>>,
+    app_part: Rc<ApplicationPart>,
+    action_parts: Vec<Rc<ActionPart>>,
 }
 
 impl TryFrom<DesktopFile> for Application {
@@ -76,7 +76,7 @@ impl Application {
 }
 
 #[derive(Debug)]
-pub struct ApplicationPart {
+struct ApplicationPart {
     pub name: String,
     pub icon: Option<String>,
     pub comment: Option<String>,
@@ -314,7 +314,7 @@ impl Search for ApplicationPart {
 }
 
 #[derive(Debug, Clone)]
-pub struct ActionPart {
+struct ActionPart {
     name: String,
     icon: Option<String>,
     exec: Exec,
