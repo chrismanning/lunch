@@ -123,8 +123,8 @@ fn is_executable(path: &Path) -> bool {
     debug!("Path '{}' exists", path.display());
     match fs::metadata(&path) {
         Ok(metadata) => {
-            debug!("Path '{}' executable: {}", path.display(), metadata.exec());
-            metadata.exec()
+            debug!("Path '{}' executable: {}", path.display(), metadata.exec(get_effective_uid()));
+            metadata.exec(get_effective_uid())
         }
         Err(_err) => {
             debug!(
@@ -140,7 +140,7 @@ fn is_executable(path: &Path) -> bool {
 mod can_exec_tests {
     use super::*;
     use spectral::prelude::*;
-    use std::fs::{set_permissions, File};
+    use std::fs::File;
     use std::os::unix::fs::PermissionsExt;
     use tempdir::TempDir;
 
@@ -150,72 +150,71 @@ mod can_exec_tests {
         assert_that!(can_exec(
             Path::new("test_nonexistant"),
             Some(tmp_dir.path().as_os_str().to_owned())
-        )).is_equal_to(false);
+        )).is_false();
     }
 
     #[test]
     fn test_relative() {
         let tmp_dir = TempDir::new("can_exec").unwrap();
         let path = tmp_dir.path().join("test_relative");
-        let _file = File::create(&path).unwrap();
-        set_permissions(&path, PermissionsExt::from_mode(0o777)).unwrap();
+        let file = File::create(&path).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
 
         assert_that!(can_exec(
             Path::new("test_relative"),
             Some(tmp_dir.path().as_os_str().to_owned())
-        )).is_equal_to(true);
+        )).is_true();
     }
 
     #[test]
     fn test_relative_not_exec() {
         let tmp_dir = TempDir::new("can_exec").unwrap();
         let path = tmp_dir.path().join("test_relative_not_exec");
-        let _file = File::create(&path).unwrap();
-        set_permissions(&path, PermissionsExt::from_mode(0o666)).unwrap();
+        let file = File::create(&path).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o666)).unwrap();
 
         assert_that!(can_exec(
             Path::new("test_relative_not_exec"),
             Some(tmp_dir.path().as_os_str().to_owned())
-        )).is_equal_to(false);
+        )).is_false();
     }
 
     #[test]
     fn test_absolute() {
         let tmp_dir = TempDir::new("can_exec").unwrap();
         let path = tmp_dir.path().join("test_absolute");
-        let _file = File::create(&path).unwrap();
-        set_permissions(&path, PermissionsExt::from_mode(0o777)).unwrap();
+        let file = File::create(&path).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
 
-        assert_that!(can_exec(&path, None)).is_equal_to(true);
+        assert_that!(can_exec(&path, None)).is_true();
     }
 
     #[test]
     fn test_absolute_not_exec() {
         let tmp_dir = TempDir::new("can_exec").unwrap();
         let path = tmp_dir.path().join("test_absolute_not_exec");
-        let _file = File::create(&path).unwrap();
-        set_permissions(&path, PermissionsExt::from_mode(0o666)).unwrap();
+        let file = File::create(&path).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o666)).unwrap();
 
-        assert_that!(can_exec(&path, None)).is_equal_to(false);
+        assert_that!(can_exec(&path, None)).is_false();
     }
 }
 
 trait MetadataExecExt {
-    fn exec(&self) -> bool;
+    fn exec(&self, uid: uid_t) -> bool;
     fn exec_owner(&self) -> bool;
     fn exec_group(&self) -> bool;
     fn exec_others(&self) -> bool;
 }
 
 impl MetadataExecExt for fs::Metadata {
-    fn exec(&self) -> bool {
-        let current_uid = get_effective_uid();
-        if current_uid == self.uid() && self.exec_owner() {
+    fn exec(&self, uid: uid_t) -> bool {
+        if uid == self.uid() && self.exec_owner() {
             return true;
         }
-        if self.exec_owner() {
+        if self.exec_group() {
             if let Some(group) = get_group_by_gid(self.gid()) {
-                if let Some(user) = get_user_by_uid(current_uid) {
+                if let Some(user) = get_user_by_uid(uid) {
                     if group
                         .members()
                         .iter()
@@ -242,6 +241,51 @@ impl MetadataExecExt for fs::Metadata {
     fn exec_others(&self) -> bool {
         let mode: u32 = self.mode();
         mode & 0o001 != 0
+    }
+}
+
+#[cfg(test)]
+mod metadata_exec_tests {
+    use super::*;
+    use spectral::prelude::*;
+    use std::fs::File;
+    use std::os::unix::fs::PermissionsExt;
+    use tempdir::TempDir;
+
+    #[test]
+    fn test_individual() {
+        let tmp_dir = TempDir::new("metadata_exec").unwrap();
+        let path = tmp_dir.path().join("test_individual");
+        let file = File::create(&path).unwrap();
+
+        file.set_permissions(PermissionsExt::from_mode(0o700)).unwrap();
+        assert_that!(file.metadata().unwrap().exec_owner()).is_true();
+        assert_that!(file.metadata().unwrap().exec_group()).is_false();
+        assert_that!(file.metadata().unwrap().exec_others()).is_false();
+
+        file.set_permissions(PermissionsExt::from_mode(0o070)).unwrap();
+        assert_that!(file.metadata().unwrap().exec_owner()).is_false();
+        assert_that!(file.metadata().unwrap().exec_group()).is_true();
+        assert_that!(file.metadata().unwrap().exec_others()).is_false();
+
+        file.set_permissions(PermissionsExt::from_mode(0o007)).unwrap();
+        assert_that!(file.metadata().unwrap().exec_owner()).is_false();
+        assert_that!(file.metadata().unwrap().exec_group()).is_false();
+        assert_that!(file.metadata().unwrap().exec_others()).is_true();
+    }
+
+    #[test]
+    fn test_exec() {
+        let tmp_dir = TempDir::new("metadata_exec").unwrap();
+        let path = tmp_dir.path().join("test_exec");
+        let file = File::create(&path).unwrap();
+
+        file.set_permissions(PermissionsExt::from_mode(0o700)).unwrap();
+        assert_that!(file.metadata().unwrap().exec(get_effective_uid())).is_true();
+        assert_that!(file.metadata().unwrap().exec(1_000_000)).is_false();
+
+        file.set_permissions(PermissionsExt::from_mode(0o7)).unwrap();
+        assert_that!(file.metadata().unwrap().exec(1_000_000)).is_true();
     }
 }
 
