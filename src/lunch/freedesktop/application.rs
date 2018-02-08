@@ -209,7 +209,7 @@ trait MetadataExecExt {
 
 impl MetadataExecExt for fs::Metadata {
     fn exec(&self, uid: uid_t) -> bool {
-        if uid == self.uid() && self.exec_owner() {
+        if self.exec_owner() && (uid == 0 || uid == self.uid()) {
             return true;
         }
         if self.exec_group() {
