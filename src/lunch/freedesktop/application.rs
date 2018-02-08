@@ -123,7 +123,11 @@ fn is_executable(path: &Path) -> bool {
     debug!("Path '{}' exists", path.display());
     match fs::metadata(&path) {
         Ok(metadata) => {
-            debug!("Path '{}' executable: {}", path.display(), metadata.exec(get_effective_uid()));
+            debug!(
+                "Path '{}' executable: {}",
+                path.display(),
+                metadata.exec(get_effective_uid())
+            );
             metadata.exec(get_effective_uid())
         }
         Err(_err) => {
@@ -158,7 +162,8 @@ mod can_exec_tests {
         let tmp_dir = TempDir::new("can_exec").unwrap();
         let path = tmp_dir.path().join("test_relative");
         let file = File::create(&path).unwrap();
-        file.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o777))
+            .unwrap();
 
         assert_that!(can_exec(
             Path::new("test_relative"),
@@ -171,7 +176,8 @@ mod can_exec_tests {
         let tmp_dir = TempDir::new("can_exec").unwrap();
         let path = tmp_dir.path().join("test_relative_not_exec");
         let file = File::create(&path).unwrap();
-        file.set_permissions(PermissionsExt::from_mode(0o666)).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o666))
+            .unwrap();
 
         assert_that!(can_exec(
             Path::new("test_relative_not_exec"),
@@ -184,7 +190,8 @@ mod can_exec_tests {
         let tmp_dir = TempDir::new("can_exec").unwrap();
         let path = tmp_dir.path().join("test_absolute");
         let file = File::create(&path).unwrap();
-        file.set_permissions(PermissionsExt::from_mode(0o777)).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o777))
+            .unwrap();
 
         assert_that!(can_exec(&path, None)).is_true();
     }
@@ -194,7 +201,8 @@ mod can_exec_tests {
         let tmp_dir = TempDir::new("can_exec").unwrap();
         let path = tmp_dir.path().join("test_absolute_not_exec");
         let file = File::create(&path).unwrap();
-        file.set_permissions(PermissionsExt::from_mode(0o666)).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o666))
+            .unwrap();
 
         assert_that!(can_exec(&path, None)).is_false();
     }
@@ -258,17 +266,20 @@ mod metadata_exec_tests {
         let path = tmp_dir.path().join("test_individual");
         let file = File::create(&path).unwrap();
 
-        file.set_permissions(PermissionsExt::from_mode(0o700)).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o700))
+            .unwrap();
         assert_that!(file.metadata().unwrap().exec_owner()).is_true();
         assert_that!(file.metadata().unwrap().exec_group()).is_false();
         assert_that!(file.metadata().unwrap().exec_others()).is_false();
 
-        file.set_permissions(PermissionsExt::from_mode(0o070)).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o070))
+            .unwrap();
         assert_that!(file.metadata().unwrap().exec_owner()).is_false();
         assert_that!(file.metadata().unwrap().exec_group()).is_true();
         assert_that!(file.metadata().unwrap().exec_others()).is_false();
 
-        file.set_permissions(PermissionsExt::from_mode(0o007)).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o007))
+            .unwrap();
         assert_that!(file.metadata().unwrap().exec_owner()).is_false();
         assert_that!(file.metadata().unwrap().exec_group()).is_false();
         assert_that!(file.metadata().unwrap().exec_others()).is_true();
@@ -280,11 +291,13 @@ mod metadata_exec_tests {
         let path = tmp_dir.path().join("test_exec");
         let file = File::create(&path).unwrap();
 
-        file.set_permissions(PermissionsExt::from_mode(0o700)).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o700))
+            .unwrap();
         assert_that!(file.metadata().unwrap().exec(get_effective_uid())).is_true();
         assert_that!(file.metadata().unwrap().exec(1_000_000)).is_false();
 
-        file.set_permissions(PermissionsExt::from_mode(0o7)).unwrap();
+        file.set_permissions(PermissionsExt::from_mode(0o7))
+            .unwrap();
         assert_that!(file.metadata().unwrap().exec(1_000_000)).is_true();
     }
 }
