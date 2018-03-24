@@ -77,11 +77,12 @@ fn run() -> Result<()> {
         )
         .get_matches();
 
-    if arg_matches.is_present("debug") {
-        log_builder.filter(None, LogLevelFilter::Debug);
-    }
     if arg_matches.is_present("trace") {
         log_builder.filter(None, LogLevelFilter::Trace);
+    } else if arg_matches.is_present("debug") {
+        log_builder.filter(None, LogLevelFilter::Debug);
+    } else {
+        log_builder.filter(None, LogLevelFilter::Info);
     }
 
     log_builder
