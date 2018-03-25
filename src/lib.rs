@@ -13,13 +13,15 @@ extern crate log;
 extern crate peeking_take_while;
 extern crate users;
 extern crate xdg;
+extern crate fst;
+extern crate fst_levenshtein;
 
 #[cfg(test)]
 #[macro_use]
 extern crate spectral;
 #[cfg(test)]
 extern crate tempdir;
-
+#[cfg(test)]
 #[macro_use]
 extern crate maplit;
 

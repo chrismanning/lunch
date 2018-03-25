@@ -9,7 +9,7 @@ pub use self::errors::*;
 pub use std::result::Result as StdResult;
 
 mod search;
-pub use self::search::{Search, SearchTerms};
+pub use self::search::{SearchIdxItem, SearchIdxData};
 
 mod launch;
 pub use self::launch::Launch;

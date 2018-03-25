@@ -5,6 +5,7 @@ use std::rc::Rc;
 use std::convert::TryFrom;
 use std::os::unix::fs::MetadataExt;
 use std::ffi::OsString;
+use std::borrow::{Borrow, Cow};
 
 use users::*;
 use users::os::unix::GroupExt;
@@ -13,8 +14,8 @@ use super::desktopfile::DesktopFile;
 use super::entry::*;
 use lunch::errors::*;
 use lunch::exec::{Exec, FieldCode};
-use lunch::{Io, Launch, Lunchable, Options, Search};
-use lunch::search::SearchTerms;
+use lunch::{Io, Launch, Lunchable, Options, SearchIdxItem};
+use lunch::search::SearchIdxData;
 
 #[derive(Debug)]
 pub struct Application {
@@ -351,21 +352,25 @@ impl Launch for ApplicationPart {
     }
 }
 
-impl Search for ApplicationPart {
-    fn search_terms(&self) -> SearchTerms {
-        let mut terms = vec![self.name.clone()];
-        if let Some(ref comment) = self.comment {
-            terms.push(comment.clone())
-        }
-        use std::borrow::{Borrow, Cow};
-        SearchTerms {
-            terms: terms.into_iter().map(Cow::Owned).collect(),
+impl SearchIdxItem for ApplicationPart {
+    fn search_terms(&self) -> SearchIdxData {
+        let mut terms: Vec<_> = self.name.as_str()
+            .split(' ')
+            .map(Borrow::borrow)
+            .map(Cow::Borrowed)
+            .collect();
+//        if let Some(ref comment) = self.comment {
+//            terms.extend(comment.split(' ')
+//                .map(Borrow::borrow)
+//                .map(Cow::Borrowed))
+//        }
+        SearchIdxData {
+            terms,
             keywords: self.keywords
                 .iter()
                 .map(Borrow::borrow)
                 .map(Cow::Borrowed)
                 .collect(),
-            related: None,
         }
     }
 }
@@ -411,10 +416,17 @@ impl Display for ActionPart {
     }
 }
 
-impl Search for ActionPart {
-    fn search_terms(&self) -> SearchTerms {
-        //        SearchTerms {
-        //        }
-        unimplemented!()
+impl SearchIdxItem for ActionPart {
+    fn search_terms(&self) -> SearchIdxData {
+        let mut terms: Vec<_> = self.name.as_str()
+            .split(' ')
+            .map(Borrow::borrow)
+            .map(Cow::Borrowed)
+            .collect();
+        terms.extend(self.application.search_terms().terms.into_iter());
+        SearchIdxData {
+            keywords: vec![Cow::Borrowed(self.name.as_str())],
+            terms,
+        }
     }
 }

@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use super::search::Search;
+use super::search::{Search, SearchIdxItem, Weight};
 
 pub struct Keyword<T, S: ?Sized> {
     search_items: Vec<T>,
@@ -9,7 +9,7 @@ pub struct Keyword<T, S: ?Sized> {
 
 impl<T, S> Keyword<T, S>
 where
-    S: Search + ?Sized,
+    S: SearchIdxItem + ?Sized,
     T: Borrow<S>,
 {
     pub fn new(search_items: Vec<T>) -> Self {
@@ -65,31 +65,29 @@ mod tests {
     use super::*;
     use spectral::prelude::*;
     use std::borrow::Cow;
-    use lunch::search::SearchTerms;
+    use lunch::search::SearchIdxData;
 
     #[derive(Debug)]
     struct DummySearch<'a> {
-        search_terms: SearchTerms<'a>,
+        search_terms: SearchIdxData<'a>,
     }
 
     impl<'a> DummySearch<'a> {
         fn new<'b: 'a>(terms: Vec<&'b str>, keywords: Vec<&'b str>) -> Self {
             DummySearch {
-                search_terms: SearchTerms {
+                search_terms: SearchIdxData {
                     terms: terms.iter().map(|s| Cow::Borrowed(*s)).collect(),
                     keywords: keywords.iter().map(|s| Cow::Borrowed(*s)).collect(),
-                    related: None,
                 },
             }
         }
     }
 
-    impl<'a> Search for DummySearch<'a> {
-        fn search_terms<'b>(&'b self) -> SearchTerms<'b> {
-            SearchTerms {
+    impl<'a> SearchIdxItem for DummySearch<'a> {
+        fn search_terms<'b>(&'b self) -> SearchIdxData<'b> {
+            SearchIdxData {
                 terms: self.search_terms.terms.clone(),
                 keywords: self.search_terms.keywords.clone(),
-                related: None,
             }
         }
     }
@@ -128,5 +126,11 @@ mod tests {
         ]);
 
         assert_that!(keyword_searcher.search("ke")).is_none();
+    }
+}
+
+impl<T, S> Search for Keyword<T, S> {
+    fn search<I: IntoIterator<Item=SRef>, SRef: AsRef<str>>(&self, search_terms: I) -> Weight {
+        unimplemented!()
     }
 }

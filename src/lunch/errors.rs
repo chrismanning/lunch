@@ -55,5 +55,7 @@ error_chain! {
         InvalidValueFormat(ParseBoolError);
         XdgError(BaseDirectoriesError);
         Io(::std::io::Error);
+        Fst(::fst::Error);
+        FstLevenshtein(::fst_levenshtein::Error);
     }
 }

@@ -4,16 +4,17 @@ use std::rc::Rc;
 use super::errors::*;
 
 use super::Launch;
-use super::Search;
+use super::SearchIdxItem;
 use super::keyword::Keyword;
+use super::search::Searcher;
 
 use super::freedesktop::env::init_lunch;
 
-pub trait Lunchable: Launch + Search + Display {}
+pub trait Lunchable: Launch + SearchIdxItem + Display {}
 
 impl<T> Lunchable for T
 where
-    T: Launch + Search + Display,
+    T: Launch + SearchIdxItem + Display,
 {
 }
 
@@ -36,10 +37,21 @@ impl LunchEnv {
     where
         Terms: Iterator<Item = S>,
         S: AsRef<str>,
+        S: ::std::fmt::Debug,
     {
-        for term in terms {
-            info!("Searching for term '{}'", term.as_ref());
-        }
+        let terms: Vec<_> = terms.collect();
+        let searcher = Searcher {
+            lunchables: self.lunchables,
+        };
+        
+        searcher.score(terms);
+        // TODO scored search
+        // each term match contributes to score total
+        // terms are concat'd
+        // eg. ["a","b","c"] => [["a","b","c"], ["a b","c"], ["a b c"], ["a", "b c"]]
+        // keyword match with other terms = high score
+        // keyword match with single term = exact match
+        // different scores for: exact match, approx match, starts with, contains, etc.
         unimplemented!()
     }
 }
