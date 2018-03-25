@@ -2,7 +2,9 @@
 authors = ["Chris Manning <cmanning999@gmail.com>"]
 name = "lunch"
 version = "0.1.0"
-license = "GPL-3.0-only"
+license = "GPL-3.0"
+description = "Command line desktop application launcher"
+categories = ["command-line-utilities", "os"]
 
 [dependencies]
 clap = "2.29"
@@ -18,3 +20,6 @@ users = "*"
 [dev-dependencies]
 tempdir = "0.3"
 spectral = "0.6"
+
+[badges]
+maintenance = { status = "experimental" }
