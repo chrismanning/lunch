@@ -4,7 +4,10 @@ name = "lunch"
 version = "0.1.0"
 license = "GPL-3.0"
 description = "Command line desktop application launcher"
+keywords = ["launch", "launcher", "lunch"]
 categories = ["command-line-utilities", "os"]
+homepage = "https://github.com/chrismanning/lunch"
+repository = "https://github.com/chrismanning/lunch"
 
 [dependencies]
 clap = "2.29"
@@ -23,3 +26,4 @@ spectral = "0.6"
 
 [badges]
 maintenance = { status = "experimental" }
+travis-ci = { repository = "chrismanning/lunch", branch = "master" }
